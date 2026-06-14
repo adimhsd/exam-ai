@@ -92,11 +92,24 @@ def get_overview_stats(db: Session = Depends(get_db), current_user: models.User 
     avg_score = db.query(func.avg(models.GradingResult.final_score)).scalar()
     avg_score = float(avg_score) if avg_score is not None else 0.0
 
+    # Hitung total mahasiswa unik berdasarkan NIM
+    total_students = db.query(models.Submission.student_nim).distinct().count()
+
+    # Hitung rata-rata tingkat keyakinan (confidence_score)
+    avg_confidence = db.query(func.avg(models.GradingResult.confidence_score)).scalar()
+    avg_confidence = float(avg_confidence) if avg_confidence is not None else 0.95
+    if avg_confidence <= 1.0:
+        avg_confidence_pct = round(avg_confidence * 100, 1)
+    else:
+        avg_confidence_pct = round(avg_confidence, 1)
+
     return {
         "total_submissions": total_submissions,
         "processing": processing_submissions,
         "completed": completed_submissions,
-        "avg_score": round(avg_score, 1)
+        "avg_score": round(avg_score, 1),
+        "total_students": total_students,
+        "avg_confidence": avg_confidence_pct
     }
 
 @router.get("/overview/chart-data")
@@ -197,7 +210,31 @@ def get_exams(course_id: Optional[UUID] = None, db: Session = Depends(get_db)):
     query = db.query(models.Exam)
     if course_id:
         query = query.filter(models.Exam.course_id == course_id)
-    return query.all()
+    exams = query.all()
+    
+    results = []
+    for exam in exams:
+        # Hitung jumlah submission mahasiswa untuk ujian ini
+        sub_count = db.query(models.Submission).filter(models.Submission.exam_id == exam.id).count()
+        
+        # Hitung rata-rata nilai untuk ujian ini
+        avg_score = db.query(func.avg(models.GradingResult.final_score))\
+            .join(models.Submission, models.Submission.id == models.GradingResult.submission_id)\
+            .filter(models.Submission.exam_id == exam.id).scalar()
+        avg_score = float(avg_score) if avg_score is not None else 0.0
+        
+        results.append(
+            schemas.ExamResponse(
+                id=exam.id,
+                course_id=exam.course_id,
+                title=exam.title,
+                date=exam.date,
+                is_active=exam.is_active,
+                submission_count=sub_count,
+                avg_score=round(avg_score, 1)
+            )
+        )
+    return results
 
 @router.post("/exams", response_model=schemas.ExamResponse, status_code=status.HTTP_201_CREATED)
 def create_exam(exam: schemas.ExamCreate, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):

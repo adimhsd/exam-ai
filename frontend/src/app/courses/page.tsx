@@ -20,6 +20,8 @@ interface Exam {
   title: string;
   date: string;
   is_active: boolean;
+  submission_count?: number;
+  avg_score?: number;
 }
 
 interface Rubric {
@@ -40,6 +42,12 @@ export default function CoursesExamsPage() {
   const [isRubricModalOpen, setIsRubricModalOpen] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Real database overview stats
+  const [stats, setStats] = useState({
+    total_students: 0,
+    avg_confidence: 95.0,
+  });
 
   // States for new question form
   const [activeExamId, setActiveExamId] = useState("");
@@ -160,6 +168,19 @@ export default function CoursesExamsPage() {
       const examsRes = await authFetch(`${API_BASE_URL}/api/v1/exams`);
       const examsData = await examsRes.json();
       setExams(examsData);
+
+      try {
+        const statsRes = await authFetch(`${API_BASE_URL}/api/v1/overview/stats`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats({
+            total_students: statsData.total_students || 0,
+            avg_confidence: statsData.avg_confidence || 95.0,
+          });
+        }
+      } catch (statsErr) {
+        console.error("Gagal mengambil stats di halaman kelas:", statsErr);
+      }
     } catch (err) {
       console.error("Gagal mengambil data courses/exams:", err);
     } finally {
@@ -390,11 +411,13 @@ export default function CoursesExamsPage() {
             <div className="col-span-1 md:col-span-2 bg-primary-container text-on-primary-container p-6 rounded-xl flex flex-col justify-between overflow-hidden relative">
               <div className="z-10">
                 <p className="text-xs font-semibold uppercase opacity-80 mb-1">Total Mahasiswa Aktif</p>
-                <p className="text-display-lg font-display font-extrabold leading-tight">1.248</p>
+                <p className="text-display-lg font-display font-extrabold leading-tight">
+                  {stats.total_students.toLocaleString()}
+                </p>
               </div>
               <div className="mt-4 z-10 flex items-center gap-2 text-status-completed font-semibold">
                 <span className="material-symbols-outlined text-sm">trending_up</span>
-                <span className="text-body-sm">+12% dari semester lalu</span>
+                <span className="text-body-sm">Terdaftar di sistem</span>
               </div>
               <div className="absolute -right-4 -bottom-4 opacity-10">
                 <span className="material-symbols-outlined !text-9xl">groups</span>
@@ -416,10 +439,12 @@ export default function CoursesExamsPage() {
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle flex flex-col justify-between">
               <div>
                 <p className="text-xs font-semibold text-on-surface-variant uppercase mb-1">Tingkat Akurasi AI</p>
-                <p className="text-headline-lg font-display font-bold text-ai-confidence-high">98.2%</p>
+                <p className="text-headline-lg font-display font-bold text-ai-confidence-high">
+                  {stats.avg_confidence}%
+                </p>
               </div>
               <div className="mt-4 w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                <div className="bg-ai-confidence-high h-full w-[98%]"></div>
+                <div className="bg-ai-confidence-high h-full" style={{ width: `${stats.avg_confidence}%` }}></div>
               </div>
             </div>
           </section>
@@ -491,12 +516,12 @@ export default function CoursesExamsPage() {
                           <div>
                             <div className="flex justify-between items-center mb-6">
                               <div className="flex flex-col">
-                                <span className="text-[10px] text-outline uppercase font-bold">Mahasiswa</span>
-                                <span className="font-bold text-sm">312/320</span>
+                                <span className="text-[10px] text-outline uppercase font-bold">Jawaban Masuk</span>
+                                <span className="font-bold text-sm">{exam.submission_count || 0} berkas</span>
                               </div>
                               <div className="flex flex-col text-right">
                                 <span className="text-[10px] text-outline uppercase font-bold">Rata-rata Nilai</span>
-                                <span className="font-bold text-primary text-sm">82.4</span>
+                                <span className="font-bold text-primary text-sm">{exam.avg_score || 0}</span>
                               </div>
                             </div>
                             <button

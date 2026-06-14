@@ -43,26 +43,6 @@ export default function Header({ title }: HeaderProps) {
           </button>
           <h2 className="font-display text-headline-sm lg:text-headline-md font-bold text-primary truncate max-w-[180px] sm:max-w-none">{title}</h2>
         </div>
-        
-        <div className="flex items-center gap-6">
-          <div className="relative hidden lg:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-            <input
-              className="pl-10 pr-4 py-1.5 bg-surface-container-low border border-border-subtle rounded-lg text-body-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="Cari penilaian/ujian..."
-              type="text"
-            />
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button className="relative p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-status-failed rounded-full border-2 border-surface"></span>
-            </button>
-            <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-          </div>
-        </div>
       </header>
 
       {/* Mobile Menu Drawer Overlay */}

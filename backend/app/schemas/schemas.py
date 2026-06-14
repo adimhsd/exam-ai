@@ -30,6 +30,8 @@ class ExamCreate(ExamBase):
 class ExamResponse(ExamBase):
     id: UUID
     course_id: UUID
+    submission_count: Optional[int] = 0
+    avg_score: Optional[float] = 0.0
 
     class Config:
         from_attributes = True
