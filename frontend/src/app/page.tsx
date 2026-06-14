@@ -164,12 +164,12 @@ export default function Dashboard() {
       <Sidebar />
 
       {/* Main Wrapper */}
-      <div className="ml-sidebar-width flex-grow flex flex-col min-h-screen">
+      <div className="ml-0 lg:ml-sidebar-width flex-grow flex flex-col min-h-screen">
         {/* Top App Bar */}
         <Header title="Ringkasan" />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-margin-desktop max-w-container-max mx-auto w-full">
+        <main className="flex-1 p-margin-mobile lg:p-margin-desktop max-w-container-max mx-auto w-full">
           {/* Stats Cards */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-margin-desktop">
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -304,15 +304,15 @@ export default function Dashboard() {
 
           {/* Real-time Queue Table */}
           <section className="bg-surface-container-lowest rounded-xl border border-border-subtle shadow-sm overflow-hidden mb-8">
-            <div className="p-6 border-b border-border-subtle flex justify-between items-center">
+            <div className="p-6 border-b border-border-subtle flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="font-display text-xl font-bold text-on-surface">Antrean Real-time</h3>
                 <p className="text-on-surface-variant text-body-sm">Tugas penilaian dokumen aktif oleh AI</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 w-full sm:w-auto">
                 <Link
                   href="/submit"
-                  className="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low border border-border-subtle rounded-lg text-body-sm hover:bg-surface-container-highest transition-colors font-semibold"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-surface-container-low border border-border-subtle rounded-lg text-body-sm hover:bg-surface-container-highest transition-colors font-semibold"
                 >
                   <span className="material-symbols-outlined text-lg">upload</span>
                   Kirim Jawaban Simulasi

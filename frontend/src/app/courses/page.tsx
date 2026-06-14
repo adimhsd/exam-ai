@@ -358,18 +358,18 @@ export default function CoursesExamsPage() {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="ml-sidebar-width flex-grow flex flex-col min-h-screen">
+      <div className="ml-0 lg:ml-sidebar-width flex-grow flex flex-col min-h-screen">
         {/* Header */}
         <Header title="Mata Kuliah & Ujian" />
 
         {/* Canvas Area */}
-        <main className="p-margin-desktop max-w-container-max mx-auto w-full">
+        <main className="p-margin-mobile lg:p-margin-desktop max-w-container-max mx-auto w-full">
           {/* Action Row */}
           <div className="flex justify-between items-center mb-8">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
               <button
                 onClick={() => setIsCreateCourseModalOpen(true)}
-                className="bg-primary text-white px-6 py-2.5 flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
+                className="w-full sm:w-auto bg-primary text-white px-6 py-2.5 flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
               >
                 <span className="material-symbols-outlined text-lg">school</span>
                 Tambah Kelas Baru
@@ -377,7 +377,7 @@ export default function CoursesExamsPage() {
               <button
                 onClick={handleSeedData}
                 disabled={isSeeding}
-                className="bg-surface-container-low border border-border-subtle text-primary px-6 py-2.5 flex items-center gap-2 hover:bg-surface-container-highest active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
+                className="w-full sm:w-auto bg-surface-container-low border border-border-subtle text-primary px-6 py-2.5 flex items-center justify-center gap-2 hover:bg-surface-container-highest active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
               >
                 <span className="material-symbols-outlined text-lg">database</span>
                 {isSeeding ? "Menyemai..." : "Seed Data Demo"}

@@ -18,18 +18,14 @@ export default function Sidebar() {
     : "AS";
 
   const userRoleLabel = user?.role === "admin" ? "Admin Utama" : "Dosen";
-
+ 
   const menuItems = [
     { name: "Dasbor", href: "/", icon: "dashboard" },
-    { name: "Mata Kuliah", href: "/courses", icon: "school" },
-    { name: "Ujian", href: "#", icon: "description" },
-    { name: "Rubrik Penilaian", href: "#", icon: "rule" },
-    { name: "Hasil Ujian", href: "#", icon: "analytics" },
-    { name: "Log Sistem", href: "#", icon: "history" },
+    { name: "Mata Kuliah & Ujian", href: "/courses", icon: "school" },
   ];
-
+ 
   return (
-    <aside className="w-sidebar-width h-screen fixed left-0 top-0 bg-background flex flex-col py-margin-desktop px-4 border-r border-border-subtle z-50">
+    <aside className="hidden lg:flex w-sidebar-width h-screen fixed left-0 top-0 bg-background flex flex-col py-margin-desktop px-4 border-r border-border-subtle z-50">
       <div className="mb-10 px-2">
         <h1 className="font-display text-headline-md font-extrabold text-primary tracking-tight">exam-ai</h1>
         <p className="text-on-surface-variant font-sans text-xs opacity-70 uppercase tracking-widest">Penilaian Akademik</p>

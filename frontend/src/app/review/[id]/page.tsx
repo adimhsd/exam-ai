@@ -68,6 +68,14 @@ export default function GradingReviewPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    setIsDesktop(window.innerWidth >= 1024);
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Fetch submission details
   const fetchSubmissionDetail = async () => {
@@ -275,10 +283,10 @@ export default function GradingReviewPage() {
         </nav>
 
         {/* Split Container */}
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative">
           
           {/* Left panel: Document Viewer */}
-          <section className="flex flex-col bg-surface-dim overflow-hidden relative" style={{ width: `${leftWidth}%` }}>
+          <section className="flex flex-col bg-surface-dim shrink-0 h-[450px] lg:h-full overflow-hidden relative w-full lg:w-auto" style={isDesktop ? { width: `${leftWidth}%` } : {}}>
             <div className="bg-surface h-12 border-b border-border-subtle flex items-center justify-between px-4">
               <div className="flex items-center gap-4">
                 <button onClick={() => setZoom(z => Math.max(50, z - 10))} className="p-1 hover:bg-surface-container-low" title="Zoom Out">
@@ -325,12 +333,12 @@ export default function GradingReviewPage() {
 
           {/* Draggable Resizer Bar */}
           <div
-            className="w-1.5 h-full bg-border-subtle hover:bg-primary cursor-col-resize transition-colors z-10"
+            className="hidden lg:block w-1.5 h-full bg-border-subtle hover:bg-primary cursor-col-resize transition-colors z-10"
             onMouseDown={handleMouseDown}
           ></div>
 
           {/* Right panel: Grading & OCR Panel */}
-          <section className="flex-grow flex flex-col bg-white overflow-hidden" style={{ width: `${100 - leftWidth}%` }}>
+          <section className="flex-grow flex flex-col bg-white overflow-hidden w-full lg:w-auto" style={isDesktop ? { width: `${100 - leftWidth}%` } : {}}>
             <div className="bg-surface h-12 border-b border-border-subtle flex items-center justify-between px-6">
               <h2 className="font-display text-body-md font-bold text-on-surface">Lembar Penilaian Nilai & Evaluasi</h2>
               <div className="flex gap-4 items-center">
