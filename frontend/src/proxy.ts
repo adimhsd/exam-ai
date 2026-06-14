@@ -9,6 +9,7 @@ export function proxy(request: NextRequest) {
 
   const isLoginPage = pathname === "/login";
   const isStudentPortal = pathname === "/submit";
+  const isRootPage = pathname === "/";
 
   // Ignore static assets, favicon, API routes
   if (
@@ -19,12 +20,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 1. If not logged in and trying to access private admin pages -> Redirect to /login
+  // 1. Jika mengakses root "/" dan belum login -> arahkan ke /submit (portal mahasiswa)
+  if (isRootPage && !token) {
+    return NextResponse.redirect(new URL("/submit", request.url));
+  }
+
+  // 2. Jika belum login dan mencoba akses halaman admin -> arahkan ke /login
   if (!token && !isLoginPage && !isStudentPortal) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 2. If logged in and trying to access /login -> Redirect to appropriate landing page
+  // 3. Jika sudah login dan mencoba akses /login -> arahkan ke halaman yang sesuai
   if (token && isLoginPage) {
     if (role === "admin" || role === "dosen") {
       return NextResponse.redirect(new URL("/", request.url));
@@ -32,7 +38,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/submit", request.url));
   }
 
-  // 3. If logged in but is NOT Dosen/Admin, and trying to access admin pages -> Redirect to /submit
+  // 4. Jika sudah login tapi bukan Dosen/Admin, mencoba akses halaman admin -> arahkan ke /submit
   if (token && !isLoginPage && !isStudentPortal && role !== "admin" && role !== "dosen") {
     return NextResponse.redirect(new URL("/submit", request.url));
   }
