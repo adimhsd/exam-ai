@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -344,11 +344,38 @@ def get_system_logs(db: Session = Depends(get_db), current_user: models.User = D
 # ==================== SUBMISSION EXTRA ACTIONS ====================
 
 @router.get("/submissions/{submission_id}/file")
-def get_submission_file(submission_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_submission_file(
+    submission_id: UUID,
+    token: str = None,
+    db: Session = Depends(get_db),
+    authorization: str = Header(None)
+):
     import os
     import requests
     from fastapi.responses import FileResponse, StreamingResponse
     
+    # Authenticate token from query parameter or Header
+    jwt_token = None
+    if authorization and authorization.startswith("Bearer "):
+        jwt_token = authorization.split(" ")[1]
+    elif token:
+        jwt_token = token
+        
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Token autentikasi diperlukan")
+        
+    try:
+        payload = jwt.decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Token tidak valid: sub tidak ditemukan")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Token tidak valid atau kedaluwarsa")
+        
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User tidak ditemukan")
+        
     s = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission tidak ditemukan")

@@ -54,7 +54,7 @@ export default function GradingReviewPage() {
   const params = useParams();
   const router = useRouter();
   const submissionId = params.id as string;
-  const { authFetch } = useAuth();
+  const { authFetch, token } = useAuth();
 
   const [submission, setSubmission] = useState<SubmissionDetail | null>(null);
   const [scores, setScores] = useState<ScoreItem[]>([]);
@@ -300,7 +300,7 @@ export default function GradingReviewPage() {
               {submission.file_url && submission.file_url.toLowerCase().split('?')[0].endsWith('.pdf') ? (
                 <iframe
                   className="w-full h-full min-h-[650px] border-none shadow-xl bg-white"
-                  src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file`}
+                  src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file${token ? `?token=${token}` : ""}`}
                   title="Salinan lembar jawaban mahasiswa"
                 />
               ) : (
@@ -316,7 +316,7 @@ export default function GradingReviewPage() {
                   <img
                     className="w-full h-auto object-contain"
                     alt="Salinan pemindaian lembar jawaban mahasiswa"
-                    src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file`}
+                    src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file${token ? `?token=${token}` : ""}`}
                   />
                 </div>
               )}
