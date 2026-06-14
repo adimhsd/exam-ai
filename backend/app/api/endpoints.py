@@ -101,16 +101,18 @@ def get_overview_stats(db: Session = Depends(get_db), current_user: models.User 
 
 @router.get("/overview/chart-data")
 def get_chart_data(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
-    # Buat dummy chart data untuk visualisasi 24 jam terakhir
-    # Di masa depan ini bisa memetakan volume submit real-time per jam
     data = []
     now = datetime.now()
     for i in range(7, -1, -1):
-        hour_time = now - timedelta(hours=i*3)
-        # Hitung data riil submission dalam interval waktu tersebut jika ada
+        start_time = now - timedelta(hours=(i+1)*3)
+        end_time = now - timedelta(hours=i*3)
+        count = db.query(models.Submission).filter(
+            models.Submission.created_at >= start_time,
+            models.Submission.created_at < end_time
+        ).count()
         data.append({
-            "time": hour_time.strftime("%H:%M"),
-            "volume": int(10 + (i * 15) % 45) # dummy dynamic data
+            "time": end_time.strftime("%H:%M"),
+            "volume": count
         })
     return data
 

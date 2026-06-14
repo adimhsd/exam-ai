@@ -63,6 +63,13 @@ export default function CoursesExamsPage() {
   const [createExamDate, setCreateExamDate] = useState("");
   const [isCreatingExam, setIsCreatingExam] = useState(false);
 
+  // States for creating course modal
+  const [isCreateCourseModalOpen, setIsCreateCourseModalOpen] = useState(false);
+  const [newCourseCode, setNewCourseCode] = useState("");
+  const [newCourseName, setNewCourseName] = useState("");
+  const [newCourseLecturer, setNewCourseLecturer] = useState("");
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+
   const handleOpenCreateExamModal = (courseId: string, courseName: string) => {
     setCreateExamCourseId(courseId);
     setCreateExamCourseName(courseName);
@@ -104,6 +111,42 @@ export default function CoursesExamsPage() {
       alert("Terjadi kesalahan jaringan.");
     } finally {
       setIsCreatingExam(false);
+    }
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCourseCode.trim() || !newCourseName.trim() || !newCourseLecturer.trim()) {
+      alert("Semua kolom formulir wajib diisi.");
+      return;
+    }
+    setIsCreatingCourse(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/courses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newCourseCode.trim(),
+          name: newCourseName.trim(),
+          lecturer_name: newCourseLecturer.trim(),
+        }),
+      });
+      if (res.ok) {
+        alert("Kelas/Mata Kuliah baru berhasil dibuat!");
+        setIsCreateCourseModalOpen(false);
+        setNewCourseCode("");
+        setNewCourseName("");
+        setNewCourseLecturer("");
+        fetchCoursesAndExams();
+      } else {
+        const err = await res.json();
+        alert(`Gagal membuat kelas: ${err.detail || "Error server"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsCreatingCourse(false);
     }
   };
 
@@ -325,9 +368,16 @@ export default function CoursesExamsPage() {
           <div className="flex justify-between items-center mb-8">
             <div className="flex gap-4">
               <button
+                onClick={() => setIsCreateCourseModalOpen(true)}
+                className="bg-primary text-white px-6 py-2.5 flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
+              >
+                <span className="material-symbols-outlined text-lg">school</span>
+                Tambah Kelas Baru
+              </button>
+              <button
                 onClick={handleSeedData}
                 disabled={isSeeding}
-                className="bg-primary text-white px-6 py-2.5 flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
+                className="bg-surface-container-low border border-border-subtle text-primary px-6 py-2.5 flex items-center gap-2 hover:bg-surface-container-highest active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
               >
                 <span className="material-symbols-outlined text-lg">database</span>
                 {isSeeding ? "Menyemai..." : "Seed Data Demo"}
@@ -805,6 +855,82 @@ export default function CoursesExamsPage() {
                 >
                   <span className="material-symbols-outlined text-sm">add</span>
                   {isCreatingExam ? "Membuat..." : "Buat Ujian"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Course Modal */}
+      {isCreateCourseModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all transform scale-100">
+            <div className="bg-primary text-white p-6 flex justify-between items-center shadow-md">
+              <div>
+                <h3 className="font-display text-lg font-bold">Tambah Kelas Baru</h3>
+                <p className="text-xs opacity-80">Mata Kuliah / Kelas Akademik</p>
+              </div>
+              <button
+                onClick={() => setIsCreateCourseModalOpen(false)}
+                className="p-1 rounded-full hover:bg-white/10 text-white transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateCourse} className="p-6 space-y-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Kode Mata Kuliah</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full text-sm text-on-surface bg-slate-50/50 p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  placeholder="Misal: CS-401"
+                  value={newCourseCode}
+                  onChange={(e) => setNewCourseCode(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Nama Mata Kuliah</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full text-sm text-on-surface bg-slate-50/50 p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  placeholder="Misal: Kecerdasan Buatan"
+                  value={newCourseName}
+                  onChange={(e) => setNewCourseName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Nama Dosen Pengampu</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full text-sm text-on-surface bg-slate-50/50 p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  placeholder="Misal: Dr. Budi Santoso"
+                  value={newCourseLecturer}
+                  onChange={(e) => setNewCourseLecturer(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateCourseModalOpen(false)}
+                  className="px-5 py-2.5 border border-outline-variant text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingCourse || !newCourseCode.trim() || !newCourseName.trim() || !newCourseLecturer.trim()}
+                  className="px-6 py-2.5 bg-primary text-white rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">school</span>
+                  {isCreatingCourse ? "Membuat..." : "Buat Kelas"}
                 </button>
               </div>
             </form>

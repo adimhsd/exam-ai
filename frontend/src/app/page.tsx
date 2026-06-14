@@ -140,12 +140,12 @@ export default function Dashboard() {
   // SVG Chart path calculation helper
   const renderChartPath = () => {
     if (chartData.length === 0) return "";
+    const maxVal = Math.max(...chartData.map(d => d.volume), 5); // default max is 5 to prevent division by zero and scale nicely
     let d = "M0,180 ";
     const widthPerSegment = 800 / (chartData.length - 1);
     chartData.forEach((item, index) => {
       // Scale volume to y coordinates (y = 200 is bottom, y = 0 is top)
-      // Volume max is around 100, let's map volume 0-100 to y 180-20
-      const y = 180 - (item.volume / 100) * 160;
+      const y = 180 - (item.volume / maxVal) * 150;
       const x = index * widthPerSegment;
       d += `L${x},${y} `;
     });
