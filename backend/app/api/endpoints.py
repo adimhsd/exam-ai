@@ -221,6 +221,37 @@ def create_rubric(rubric: schemas.RubricCreate, db: Session = Depends(get_db), c
     return db_rubric
 
 
+@router.put("/rubrics/{rubric_id}", response_model=schemas.RubricResponse)
+def update_rubric(
+    rubric_id: UUID,
+    payload: schemas.RubricUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(verify_dosen)
+):
+    db_rubric = db.query(models.Rubric).filter(models.Rubric.id == rubric_id).first()
+    if not db_rubric:
+        raise HTTPException(status_code=404, detail="Rubrik tidak ditemukan")
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(db_rubric, key, value)
+    db.commit()
+    db.refresh(db_rubric)
+    return db_rubric
+
+
+@router.delete("/rubrics/{rubric_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_rubric(
+    rubric_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(verify_dosen)
+):
+    db_rubric = db.query(models.Rubric).filter(models.Rubric.id == rubric_id).first()
+    if not db_rubric:
+        raise HTTPException(status_code=404, detail="Rubrik tidak ditemukan")
+    db.delete(db_rubric)
+    db.commit()
+    return None
+
+
 # ==================== SUBMISSIONS ====================
 
 @router.get("/submissions", response_model=List[schemas.SubmissionDetailResponse])

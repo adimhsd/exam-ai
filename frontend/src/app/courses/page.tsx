@@ -41,6 +41,20 @@ export default function CoursesExamsPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // States for new question form
+  const [activeExamId, setActiveExamId] = useState("");
+  const [newQuestionNumber, setNewQuestionNumber] = useState(1);
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const [newAnswerKey, setNewAnswerKey] = useState("");
+  const [newMaxScore, setNewMaxScore] = useState(5);
+  const [newRubricCriteria, setNewRubricCriteria] = useState<string[]>([]);
+  const [newCriteriaInput, setNewCriteriaInput] = useState("");
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+
+  // States for criteria inputs and saving status in existing rubrics
+  const [newCriteriaInputs, setNewCriteriaInputs] = useState<Record<string, string>>({});
+  const [isSavingRubric, setIsSavingRubric] = useState<Record<string, boolean>>({});
+
   const fetchCoursesAndExams = async () => {
     try {
       setIsLoading(true);
@@ -82,7 +96,151 @@ export default function CoursesExamsPage() {
     }
   };
 
+  const handleRubricFieldChange = (rubricId: string, field: keyof Rubric, value: any) => {
+    setSelectedExamRubrics(prev =>
+      prev.map(r => (r.id === rubricId ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const handleRemoveCriteria = (rubricId: string, indexToRemove: number) => {
+    setSelectedExamRubrics(prev =>
+      prev.map(r => {
+        if (r.id === rubricId) {
+          const criteria = r.rubric_criteria ? [...r.rubric_criteria] : [];
+          criteria.splice(indexToRemove, 1);
+          return { ...r, rubric_criteria: criteria };
+        }
+        return r;
+      })
+    );
+  };
+
+  const handleNewCriteriaTextChange = (rubricId: string, text: string) => {
+    setNewCriteriaInputs(prev => ({ ...prev, [rubricId]: text }));
+  };
+
+  const handleAddCriteria = (rubricId: string) => {
+    const text = (newCriteriaInputs[rubricId] || "").trim();
+    if (!text) return;
+    setSelectedExamRubrics(prev =>
+      prev.map(r => {
+        if (r.id === rubricId) {
+          const criteria = r.rubric_criteria ? [...r.rubric_criteria] : [];
+          if (!criteria.includes(text)) {
+            criteria.push(text);
+          }
+          return { ...r, rubric_criteria: criteria };
+        }
+        return r;
+      })
+    );
+    setNewCriteriaInputs(prev => ({ ...prev, [rubricId]: "" }));
+  };
+
+  const handleSaveRubric = async (rubric: Rubric) => {
+    setIsSavingRubric(prev => ({ ...prev, [rubric.id]: true }));
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/rubrics/${rubric.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question_number: rubric.question_number,
+          question_text: rubric.question_text,
+          answer_key: rubric.answer_key,
+          max_score: rubric.max_score,
+          rubric_criteria: rubric.rubric_criteria || [],
+        }),
+      });
+      if (res.ok) {
+        alert(`Soal #${rubric.question_number} berhasil disimpan!`);
+      } else {
+        alert("Gagal menyimpan soal.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsSavingRubric(prev => ({ ...prev, [rubric.id]: false }));
+    }
+  };
+
+  const handleDeleteRubric = async (rubricId: string, questionNumber: number) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus Soal #${questionNumber}?`)) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/rubrics/${rubricId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        alert(`Soal #${questionNumber} berhasil dihapus!`);
+        setSelectedExamRubrics(prev => prev.filter(r => r.id !== rubricId));
+      } else {
+        alert("Gagal menghapus soal.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    }
+  };
+
+  const handleNewCriteriaAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = newCriteriaInput.trim();
+    if (text && !newRubricCriteria.includes(text)) {
+      setNewRubricCriteria(prev => [...prev, text]);
+      setNewCriteriaInput("");
+    }
+  };
+
+  const handleNewCriteriaRemove = (index: number) => {
+    setNewRubricCriteria(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddQuestion = async () => {
+    if (!newQuestionText.trim() || !newAnswerKey.trim()) {
+      alert("Teks pertanyaan dan kunci jawaban wajib diisi.");
+      return;
+    }
+    setIsAddingQuestion(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/rubrics`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exam_id: activeExamId,
+          question_number: newQuestionNumber,
+          question_text: newQuestionText,
+          answer_key: newAnswerKey,
+          max_score: newMaxScore,
+          rubric_criteria: newRubricCriteria,
+        }),
+      });
+      if (res.ok) {
+        const newRubric = await res.json();
+        alert("Soal baru berhasil ditambahkan!");
+        setSelectedExamRubrics(prev => [...prev, newRubric].sort((a, b) => a.question_number - b.question_number));
+        setNewQuestionText("");
+        setNewAnswerKey("");
+        setNewRubricCriteria([]);
+        setNewCriteriaInput("");
+        setNewQuestionNumber(prev => prev + 1);
+      } else {
+        alert("Gagal menambahkan soal baru.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsAddingQuestion(false);
+    }
+  };
+
   const handleManageRubric = async (examId: string, examTitle: string) => {
+    setActiveExamId(examId);
+    setNewQuestionText("");
+    setNewAnswerKey("");
+    setNewRubricCriteria([]);
+    setNewCriteriaInput("");
+    
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/exams/${examId}/rubrics`);
       if (res.ok) {
@@ -90,6 +248,9 @@ export default function CoursesExamsPage() {
         setSelectedExamRubrics(rubricsData);
         setActiveRubricExamTitle(examTitle);
         setIsRubricModalOpen(true);
+        // Set new question number to max + 1
+        const maxNum = rubricsData.reduce((max: number, r: Rubric) => Math.max(max, r.question_number), 0);
+        setNewQuestionNumber(maxNum + 1);
       }
     } catch (err) {
       console.error("Gagal memuat rubrik:", err);
@@ -264,63 +425,269 @@ export default function CoursesExamsPage() {
         </main>
       </div>
 
-      {/* Rubric View Modal */}
+      {/* Rubric View/Edit Modal */}
       {isRubricModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-primary text-white p-6 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+            <div className="bg-primary text-white p-6 flex justify-between items-center shadow-md">
               <div>
                 <h3 className="font-display text-lg font-bold">{activeRubricExamTitle}</h3>
-                <p className="text-xs opacity-80">Konfigurasi Rubrik Penilaian AI</p>
+                <p className="text-xs opacity-80">Konfigurasi & Editor Rubrik Penilaian AI</p>
               </div>
               <button
                 onClick={() => setIsRubricModalOpen(false)}
-                className="p-1 rounded-full hover:bg-white/10 text-white"
+                className="p-1 rounded-full hover:bg-white/10 text-white transition-colors"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {selectedExamRubrics.length === 0 ? (
-                <div className="text-center py-8 text-on-surface-variant">Belum ada rubrik terdaftar untuk ujian ini.</div>
-              ) : (
-                selectedExamRubrics.map((rubric) => (
-                  <div key={rubric.id} className="border border-border-subtle p-4 rounded-lg bg-surface-container-low">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-semibold text-primary">Soal #{rubric.question_number}</span>
-                      <span className="text-xs font-bold bg-primary-container text-on-primary-container px-2.5 py-0.5 rounded">
-                        Maks: {rubric.max_score} Poin
-                      </span>
-                    </div>
-                    <p className="font-bold text-body-sm mb-2">{rubric.question_text}</p>
-                    <div className="text-xs bg-white border border-border-subtle p-3 rounded space-y-2">
-                      <div>
-                        <span className="text-[10px] text-outline uppercase font-bold block mb-1">Kunci Jawaban</span>
-                        <p className="font-mono text-on-surface-variant whitespace-pre-wrap">{rubric.answer_key}</p>
+            
+            <div className="p-6 overflow-y-auto space-y-8 flex-1 bg-slate-50">
+              {/* Existing Rubrics Section */}
+              <div className="space-y-6">
+                <h4 className="font-display text-sm font-bold text-slate-700 border-b pb-2 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm text-primary">list_alt</span>
+                  Daftar Pertanyaan & Rubrik Ujian
+                </h4>
+                {selectedExamRubrics.length === 0 ? (
+                  <div className="text-center py-8 text-on-surface-variant bg-white rounded-lg border border-border-subtle">
+                    Belum ada rubrik terdaftar untuk ujian ini.
+                  </div>
+                ) : (
+                  selectedExamRubrics.map((rubric) => (
+                    <div key={rubric.id} className="border border-border-subtle p-6 rounded-xl bg-white shadow-sm hover:shadow-md transition-all space-y-4">
+                      {/* Number and Max Score Header */}
+                      <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs uppercase text-slate-400">Soal #</span>
+                          <input
+                            type="number"
+                            className="w-16 px-2.5 py-1 border border-border-subtle rounded text-sm font-bold focus:outline-none focus:border-primary text-center"
+                            value={rubric.question_number}
+                            onChange={(e) => handleRubricFieldChange(rubric.id, "question_number", parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs uppercase text-slate-400">Skor Maksimal:</span>
+                          <input
+                            type="number"
+                            className="w-16 px-2.5 py-1 border border-border-subtle rounded text-sm font-bold focus:outline-none focus:border-primary text-center"
+                            value={rubric.max_score}
+                            onChange={(e) => handleRubricFieldChange(rubric.id, "max_score", parseInt(e.target.value) || 0)}
+                          />
+                          <span className="text-xs text-slate-400 font-semibold">Poin</span>
+                        </div>
                       </div>
-                      {rubric.rubric_criteria && rubric.rubric_criteria.length > 0 && (
-                        <div>
-                          <span className="text-[10px] text-outline uppercase font-bold block mb-1">Kriteria Kunci Penilaian</span>
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {rubric.rubric_criteria.map((c, idx) => (
-                              <span key={idx} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">
-                                {c}
-                              </span>
-                            ))}
+
+                      {/* Question Text and Answer Key */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Teks Pertanyaan</label>
+                          <textarea
+                            rows={3}
+                            className="w-full text-xs text-on-surface bg-slate-50/50 p-2.5 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white resize-y"
+                            value={rubric.question_text}
+                            onChange={(e) => handleRubricFieldChange(rubric.id, "question_text", e.target.value)}
+                            placeholder="Tulis pertanyaan ujian..."
+                          ></textarea>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Kunci Jawaban Acuan</label>
+                          <textarea
+                            rows={3}
+                            className="w-full text-xs text-on-surface bg-slate-50/50 p-2.5 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white resize-y font-mono"
+                            value={rubric.answer_key}
+                            onChange={(e) => handleRubricFieldChange(rubric.id, "answer_key", e.target.value)}
+                            placeholder="Tulis kunci jawaban..."
+                          ></textarea>
+                        </div>
+                      </div>
+
+                      {/* Criteria Tags Management */}
+                      <div className="space-y-2 pt-2 border-t border-dashed border-border-subtle">
+                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Kriteria Penilaian Kunci (Poin Penting untuk AI)</label>
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {rubric.rubric_criteria && rubric.rubric_criteria.map((c, idx) => (
+                            <span key={idx} className="bg-slate-100 border border-slate-200 text-slate-700 pl-3 pr-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 hover:bg-slate-200 transition-colors">
+                              {c}
+                              <button
+                                onClick={() => handleRemoveCriteria(rubric.id, idx)}
+                                className="w-4 h-4 rounded-full bg-slate-300/60 hover:bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] font-bold"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                          {/* New criteria input for this specific rubric card */}
+                          <div className="flex items-center gap-1.5 ml-2">
+                            <input
+                              type="text"
+                              className="px-3 py-1 border border-border-subtle rounded-full text-xs focus:outline-none focus:border-primary w-32 placeholder:text-slate-400"
+                              placeholder="+ Tambah Kriteria"
+                              value={newCriteriaInputs[rubric.id] || ""}
+                              onChange={(e) => handleNewCriteriaTextChange(rubric.id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddCriteria(rubric.id);
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => handleAddCriteria(rubric.id)}
+                              className="w-6 h-6 rounded-full bg-slate-200 hover:bg-primary hover:text-white flex items-center justify-center transition-all text-xs font-bold"
+                            >
+                              +
+                            </button>
                           </div>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Card Actions */}
+                      <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                        <button
+                          onClick={() => handleDeleteRubric(rubric.id, rubric.question_number)}
+                          className="px-4 py-2 border border-rose-200 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-50 active:scale-95 transition-all flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                          Hapus Soal
+                        </button>
+                        <button
+                          onClick={() => handleSaveRubric(rubric)}
+                          disabled={isSavingRubric[rubric.id]}
+                          className="px-5 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow"
+                        >
+                          <span className="material-symbols-outlined text-sm">save</span>
+                          {isSavingRubric[rubric.id] ? "Menyimpan..." : "Simpan Perubahan"}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add New Question Section */}
+              <div className="border border-dashed border-primary/40 p-6 rounded-xl bg-primary/5 hover:bg-primary/[0.08] transition-all space-y-4">
+                <h4 className="font-display text-sm font-bold text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  Tambah Soal Baru untuk Ujian Ini
+                </h4>
+                
+                <div className="flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs uppercase text-slate-500">Soal #</span>
+                    <input
+                      type="number"
+                      className="w-16 px-2.5 py-1 border border-border-subtle rounded bg-white text-sm font-bold focus:outline-none focus:border-primary text-center"
+                      value={newQuestionNumber}
+                      onChange={(e) => setNewQuestionNumber(parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs uppercase text-slate-500">Skor Maksimal:</span>
+                    <input
+                      type="number"
+                      className="w-16 px-2.5 py-1 border border-border-subtle rounded bg-white text-sm font-bold focus:outline-none focus:border-primary text-center"
+                      value={newMaxScore}
+                      onChange={(e) => setNewMaxScore(parseInt(e.target.value) || 0)}
+                    />
+                    <span className="text-xs text-slate-500 font-semibold">Poin</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Teks Pertanyaan</label>
+                    <textarea
+                      rows={3}
+                      className="w-full text-xs text-on-surface bg-white p-2.5 border border-border-subtle rounded-lg focus:outline-none focus:border-primary resize-y"
+                      value={newQuestionText}
+                      onChange={(e) => setNewQuestionText(e.target.value)}
+                      placeholder="Masukkan pertanyaan esai baru..."
+                    ></textarea>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Kunci Jawaban Acuan</label>
+                    <textarea
+                      rows={3}
+                      className="w-full text-xs text-on-surface bg-white p-2.5 border border-border-subtle rounded-lg focus:outline-none focus:border-primary resize-y font-mono"
+                      value={newAnswerKey}
+                      onChange={(e) => setNewAnswerKey(e.target.value)}
+                      placeholder="Masukkan kunci jawaban referensi..."
+                    ></textarea>
+                  </div>
+                </div>
+
+                {/* Add Criteria for new question */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Kriteria Penilaian Kunci (Poin Penting untuk AI)</label>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {newRubricCriteria.map((c, idx) => (
+                      <span key={idx} className="bg-primary-container/20 border border-primary-container/40 text-primary pl-3 pr-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5">
+                        {c}
+                        <button
+                          type="button"
+                          onClick={() => handleNewCriteriaRemove(idx)}
+                          className="w-4 h-4 rounded-full bg-primary-container/40 hover:bg-primary-container text-primary flex items-center justify-center text-[10px] font-bold"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <input
+                        type="text"
+                        className="px-3 py-1 border border-border-subtle rounded-full text-xs focus:outline-none focus:border-primary w-36 bg-white placeholder:text-slate-400"
+                        placeholder="+ Kriteria Baru"
+                        value={newCriteriaInput}
+                        onChange={(e) => setNewCriteriaInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const text = newCriteriaInput.trim();
+                            if (text && !newRubricCriteria.includes(text)) {
+                              setNewRubricCriteria(prev => [...prev, text]);
+                              setNewCriteriaInput("");
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const text = newCriteriaInput.trim();
+                          if (text && !newRubricCriteria.includes(text)) {
+                            setNewRubricCriteria(prev => [...prev, text]);
+                            setNewCriteriaInput("");
+                          }
+                        }}
+                        className="w-6 h-6 rounded-full bg-primary/20 hover:bg-primary text-primary hover:text-white flex items-center justify-center transition-all text-xs font-bold"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={handleAddQuestion}
+                    disabled={isAddingQuestion || !newQuestionText.trim() || !newAnswerKey.trim()}
+                    className="px-6 py-2.5 bg-primary text-white rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow disabled:opacity-50 disabled:scale-100"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    {isAddingQuestion ? "Menambahkan..." : "Tambah Soal ke Ujian"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="p-4 border-t border-border-subtle bg-surface flex justify-end">
+
+            <div className="p-4 border-t border-border-subtle bg-surface flex justify-end gap-3 shadow-lg">
               <button
                 onClick={() => setIsRubricModalOpen(false)}
-                className="bg-primary text-white px-6 py-2 rounded font-semibold text-body-sm shadow"
+                className="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-body-sm hover:bg-slate-300 transition-all active:scale-95"
               >
-                Tutup
+                Tutup & Selesai
               </button>
             </div>
           </div>

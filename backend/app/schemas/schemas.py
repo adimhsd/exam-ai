@@ -52,6 +52,14 @@ class RubricResponse(RubricBase):
     class Config:
         from_attributes = True
 
+
+class RubricUpdate(BaseModel):
+    question_number: Optional[int] = None
+    question_text: Optional[str] = None
+    answer_key: Optional[str] = None
+    max_score: Optional[int] = None
+    rubric_criteria: Optional[List[str]] = None
+
 # Submission Schemas
 class SubmissionBase(BaseModel):
     student_nim: str
