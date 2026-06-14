@@ -361,7 +361,8 @@ def review_grading_result(
         exam_title=exam.title if exam else "Hasil Evaluasi",
         total_score=float(grading_result.final_score),
         overall_feedback=grading_result.overall_feedback,
-        scores_breakdown=grading_result.scores_breakdown
+        scores_breakdown=grading_result.scores_breakdown,
+        student_nim=submission.student_nim
     )
 
     return grading_result

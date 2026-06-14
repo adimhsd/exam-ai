@@ -285,7 +285,8 @@ def evaluate_submission(db: Session, submission_id: str):
             exam_title=exam_title,
             total_score=float(grading_result.final_score),
             overall_feedback=grading_result.overall_feedback,
-            scores_breakdown=grading_result.scores_breakdown
+            scores_breakdown=grading_result.scores_breakdown,
+            student_nim=submission.student_nim
         )
         print(f"Email sent status: {email_sent}")
 
