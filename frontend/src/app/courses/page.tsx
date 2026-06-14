@@ -55,6 +55,58 @@ export default function CoursesExamsPage() {
   const [newCriteriaInputs, setNewCriteriaInputs] = useState<Record<string, string>>({});
   const [isSavingRubric, setIsSavingRubric] = useState<Record<string, boolean>>({});
 
+  // States for creating exam modal
+  const [isCreateExamModalOpen, setIsCreateExamModalOpen] = useState(false);
+  const [createExamCourseId, setCreateExamCourseId] = useState("");
+  const [createExamCourseName, setCreateExamCourseName] = useState("");
+  const [createExamTitle, setCreateExamTitle] = useState("");
+  const [createExamDate, setCreateExamDate] = useState("");
+  const [isCreatingExam, setIsCreatingExam] = useState(false);
+
+  const handleOpenCreateExamModal = (courseId: string, courseName: string) => {
+    setCreateExamCourseId(courseId);
+    setCreateExamCourseName(courseName);
+    setCreateExamTitle("");
+    const today = new Date().toISOString().split("T")[0];
+    setCreateExamDate(today);
+    setIsCreateExamModalOpen(true);
+  };
+
+  const handleCreateExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createExamTitle.trim() || !createExamDate) {
+      alert("Semua kolom formulir wajib diisi.");
+      return;
+    }
+    setIsCreatingExam(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/exams`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: createExamTitle,
+          date: createExamDate,
+          is_active: true,
+          course_id: createExamCourseId,
+        }),
+      });
+      if (res.ok) {
+        alert("Ujian baru berhasil dibuat!");
+        setIsCreateExamModalOpen(false);
+        setCreateExamTitle("");
+        fetchCoursesAndExams();
+      } else {
+        const err = await res.json();
+        alert(`Gagal membuat ujian: ${err.detail || "Error server"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsCreatingExam(false);
+    }
+  };
+
   const fetchCoursesAndExams = async () => {
     try {
       setIsLoading(true);
@@ -408,8 +460,11 @@ export default function CoursesExamsPage() {
                         </div>
                       ))}
 
-                      {/* Add Exam Dummy Card */}
-                      <button className="border-2 border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center p-6 text-on-surface-variant hover:bg-surface-container-low hover:border-primary hover:text-primary transition-all group min-h-[260px]">
+                      {/* Add Exam Card */}
+                      <button
+                        onClick={() => handleOpenCreateExamModal(course.id, course.name)}
+                        className="border-2 border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center p-6 text-on-surface-variant hover:bg-surface-container-low hover:border-primary hover:text-primary transition-all group min-h-[260px]"
+                      >
                         <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-on-primary">
                           <span className="material-symbols-outlined">add</span>
                         </div>
@@ -690,6 +745,69 @@ export default function CoursesExamsPage() {
                 Tutup & Selesai
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Exam Modal */}
+      {isCreateExamModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all transform scale-100">
+            <div className="bg-primary text-white p-6 flex justify-between items-center shadow-md">
+              <div>
+                <h3 className="font-display text-lg font-bold">Buat Ujian Baru</h3>
+                <p className="text-xs opacity-80">Mata Kuliah: {createExamCourseName}</p>
+              </div>
+              <button
+                onClick={() => setIsCreateExamModalOpen(false)}
+                className="p-1 rounded-full hover:bg-white/10 text-white transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateExam} className="p-6 space-y-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Judul Ujian</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full text-sm text-on-surface bg-slate-50/50 p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  placeholder="Misal: Ujian Akhir Semester: Pemrograman Lanjut"
+                  value={createExamTitle}
+                  onChange={(e) => setCreateExamTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Tanggal Pelaksanaan</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full text-sm text-on-surface bg-slate-50/50 p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  value={createExamDate}
+                  onChange={(e) => setCreateExamDate(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateExamModalOpen(false)}
+                  className="px-5 py-2.5 border border-outline-variant text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingExam || !createExamTitle.trim() || !createExamDate}
+                  className="px-6 py-2.5 bg-primary text-white rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">add</span>
+                  {isCreatingExam ? "Membuat..." : "Buat Ujian"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
