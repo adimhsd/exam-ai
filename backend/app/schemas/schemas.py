@@ -152,3 +152,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class SubmissionRegradePayload(BaseModel):
+    raw_ocr_text: str
+

@@ -29,6 +29,7 @@ interface GradingResult {
 
 interface SubmissionDetail {
   id: string;
+  exam_id: string;
   student_nim: string;
   student_name: string;
   student_email: string;
@@ -38,6 +39,15 @@ interface SubmissionDetail {
   exam_title: string;
   course_name: string;
   grading_result: GradingResult | null;
+}
+
+interface Rubric {
+  id: string;
+  question_number: number;
+  question_text: string;
+  answer_key: string;
+  max_score: number;
+  rubric_criteria?: string[];
 }
 
 export default function GradingReviewPage() {
@@ -50,6 +60,7 @@ export default function GradingReviewPage() {
   const [scores, setScores] = useState<ScoreItem[]>([]);
   const [overallFeedback, setOverallFeedback] = useState("");
   const [rawOcr, setRawOcr] = useState("");
+  const [rubrics, setRubrics] = useState<Rubric[]>([]);
   
   const [leftWidth, setLeftWidth] = useState(50); // percentage for split screen
   const [zoom, setZoom] = useState(100);
@@ -70,6 +81,17 @@ export default function GradingReviewPage() {
         setScores(data.grading_result.scores_breakdown || []);
         setOverallFeedback(data.grading_result.overall_feedback || "");
         setRawOcr(data.grading_result.raw_ocr_text || "");
+      }
+      
+      // Fetch rubrics dynamically using exam_id
+      try {
+        const rubricRes = await authFetch(`${API_BASE_URL}/api/v1/exams/${data.exam_id}/rubrics`);
+        if (rubricRes.ok) {
+          const rubricsData = await rubricRes.json();
+          setRubrics(rubricsData);
+        }
+      } catch (rubricErr) {
+        console.error("Gagal mengambil data rubrik:", rubricErr);
       }
     } catch (err) {
       console.error(err);
@@ -124,24 +146,21 @@ export default function GradingReviewPage() {
   const handleReprocess = async () => {
     setIsReprocessing(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/process`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/regrade`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ raw_ocr_text: rawOcr }),
       });
       if (res.ok) {
-        alert("Proses ulang berhasil dipicu! Halaman akan dimuat ulang ketika selesai.");
-        // Poll status
-        const poll = setInterval(async () => {
-          const check = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}`);
-          const cData: SubmissionDetail = await check.json();
-          if (cData.status === "COMPLETED" || cData.status === "FAILED") {
-            clearInterval(poll);
-            fetchSubmissionDetail();
-            setIsReprocessing(false);
-          }
-        }, 3000);
+        alert("Penilaian ulang berhasil dilakukan!");
+        fetchSubmissionDetail();
+      } else {
+        alert("Gagal melakukan penilaian ulang.");
       }
     } catch (err) {
       console.error(err);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
       setIsReprocessing(false);
     }
   };
@@ -278,22 +297,29 @@ export default function GradingReviewPage() {
             </div>
             
             <div className="flex-1 overflow-auto p-8 flex justify-center items-start bg-slate-200">
-              <div
-                className="bg-white shadow-xl relative transition-transform duration-300"
-                style={{
-                  transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                  transformOrigin: "top center",
-                  width: "100%",
-                  maxWidth: "650px",
-                }}
-              >
-                {/* Visual Exam sheet from URL */}
-                <img
-                  className="w-full h-auto object-contain"
-                  alt="Salinan pemindaian lembar jawaban mahasiswa"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJeW-2Hmai7cJeF62KDn9Xl2oUjbFFBwAXx_QTTpraybbtF_S4A9fT429WU8sgkIkqTwMkQJHdbqlVzZ8PJMZxE72TswIPUK6tWjkIzzXtSzwprmnEid6MZo7NdFJo89OgN1YHjTcIPh8CKwZsASLWEB1tRKt4XdPw2hh9KeFimcA36F38061-Nb_qsNqqiMLOkeFoiBXkPUgdaUn0RX_XnDQijl6sWrudoHeIW4isccYc0iaOWZ2P1HxVlDtwW7YsaKM6Mqv-mPk"
+              {submission.file_url && submission.file_url.toLowerCase().split('?')[0].endsWith('.pdf') ? (
+                <iframe
+                  className="w-full h-full min-h-[650px] border-none shadow-xl bg-white"
+                  src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file`}
+                  title="Salinan lembar jawaban mahasiswa"
                 />
-              </div>
+              ) : (
+                <div
+                  className="bg-white shadow-xl relative transition-transform duration-300"
+                  style={{
+                    transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                    transformOrigin: "top center",
+                    width: "100%",
+                    maxWidth: "650px",
+                  }}
+                >
+                  <img
+                    className="w-full h-auto object-contain"
+                    alt="Salinan pemindaian lembar jawaban mahasiswa"
+                    src={`${API_BASE_URL}/api/v1/submissions/${submissionId}/file`}
+                  />
+                </div>
+              )}
             </div>
           </section>
 
@@ -363,87 +389,121 @@ export default function GradingReviewPage() {
                 </div>
               )}
 
+              {/* OCR Transcription Card */}
+              {scores.length > 0 && (
+                <div className="border border-border-subtle rounded-xl p-6 bg-surface-container-low shadow-sm">
+                  <h3 className="font-display text-body-md font-bold mb-2 text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">edit_note</span>
+                    Transkripsi OCR Lengkap (Dapat Disunting)
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mb-4">
+                    Dosen dapat mengoreksi kesalahan pembacaan tulisan tangan di sini sebelum menekan tombol <strong>Hitung Ulang AI</strong> untuk melakukan penilaian ulang.
+                  </p>
+                  <textarea
+                    rows={12}
+                    className="w-full font-mono text-xs text-on-surface bg-white p-3 border border-border-subtle rounded-lg focus:outline-none focus:border-primary resize-y"
+                    value={rawOcr}
+                    onChange={(e) => setRawOcr(e.target.value)}
+                    placeholder="Masukkan atau sunting hasil transkripsi OCR di sini..."
+                  ></textarea>
+                </div>
+              )}
+
               {/* Loop Question Grading Cards */}
-              {scores.map((item) => (
-                <div
-                  key={item.question_number}
-                  className="grading-card rounded-xl border border-border-subtle focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-sm hover:shadow-md transition-all"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="font-sans text-primary uppercase text-[10px] font-extrabold tracking-widest block mb-1">
-                        Soal {String(item.question_number).padStart(2, "0")}
-                      </span>
-                      <h3 className="font-display text-body-md font-bold text-on-surface">
-                        {item.question_number === 1 && "Definisikan Hukum Kedua Termodinamika."}
-                        {item.question_number === 2 && "Hitung efisiensi mesin kalor."}
-                        {item.question_number === 3 && "Jelaskan tahapan Siklus Carnot."}
-                        {item.question_number > 3 && "Soal Ujian Esai"}
-                      </h3>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          className="w-16 text-right font-bold text-lg border border-border-subtle bg-surface-container-low rounded-lg p-1.5 focus:ring-1 focus:ring-primary focus:outline-none"
-                          step="0.5"
-                          type="number"
-                          min="0"
-                          max={item.max_score}
-                          value={item.score}
-                          onChange={(e) => handleScoreChange(item.question_number, parseFloat(e.target.value) || 0)}
-                        />
-                        <span className="text-body-sm text-outline-variant font-semibold">/ {item.max_score}</span>
+              {scores.map((item) => {
+                const matchedRubric = rubrics.find(r => r.question_number === item.question_number);
+                
+                return (
+                  <div
+                    key={item.question_number}
+                    className="grading-card rounded-xl border border-border-subtle focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-sm hover:shadow-md transition-all p-6"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="font-sans text-primary uppercase text-[10px] font-extrabold tracking-widest block mb-1">
+                          Soal {String(item.question_number).padStart(2, "0")}
+                        </span>
+                        <h3 className="font-display text-body-md font-bold text-on-surface">
+                          {matchedRubric ? matchedRubric.question_text : "Soal Ujian Esai"}
+                        </h3>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            className="w-16 text-right font-bold text-lg border border-border-subtle bg-surface-container-low rounded-lg p-1.5 focus:ring-1 focus:ring-primary focus:outline-none"
+                            step="0.5"
+                            type="number"
+                            min="0"
+                            max={item.max_score}
+                            value={item.score}
+                            onChange={(e) => handleScoreChange(item.question_number, parseFloat(e.target.value) || 0)}
+                          />
+                          <span className="text-body-sm text-outline-variant font-semibold">/ {item.max_score}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <label className="text-[10px] font-bold text-on-surface-variant mb-1.5 block tracking-wider">
-                      HASIL TRANSKRIPSI OCR (BISA DIEDIT)
-                    </label>
-                    <div className="font-mono text-xs text-on-surface bg-surface-muted p-3 border border-border-subtle rounded-lg whitespace-pre-wrap">
-                      {rawOcr ? (
-                        "Hasil ekstraksi teks OCR visual lengkap dapat diedit di kolom teks utama."
-                      ) : (
-                        "Tidak ada teks terdeteksi."
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-ai-confidence-high/5 rounded-lg border border-ai-confidence-high/20">
+                        <p className="text-[10px] font-bold text-ai-confidence-high mb-1 uppercase tracking-wider">Analisis & Umpan Balik AI</p>
+                        <p className="text-xs leading-relaxed text-on-surface">{item.feedback || "Jawaban dianalisis secara otomatis berdasarkan rubrik kriteria poin."}</p>
+                      </div>
+                      <div className="p-3 bg-surface-container-low rounded-lg border border-border-subtle">
+                        <p className="text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Kriteria Terpenuhi</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.criteria_met && item.criteria_met.length > 0 ? (
+                            item.criteria_met.map((c, i) => (
+                              <span key={i} className="bg-white border border-border-subtle text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                ✓ {c}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-outline italic">Kriteria penilaian tidak terpenuhi</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-3 bg-ai-confidence-high/5 rounded-lg border border-ai-confidence-high/20">
-                      <p className="text-[10px] font-bold text-ai-confidence-high mb-1 uppercase tracking-wider">Analisis & Umpan Balik AI</p>
-                      <p className="text-xs leading-relaxed text-on-surface">{item.feedback || "Jawaban dianalisis secara otomatis berdasarkan rubrik kriteria poin."}</p>
-                    </div>
-                    <div className="p-3 bg-surface-container-low rounded-lg border border-border-subtle">
-                      <p className="text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Kriteria Terpenuhi</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {item.criteria_met && item.criteria_met.length > 0 ? (
-                          item.criteria_met.map((c, i) => (
-                            <span key={i} className="bg-white border border-border-subtle text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold">
-                              ✓ {c}
+                    {/* Original Rubric & Answer Key Guidelines */}
+                    {matchedRubric && (
+                      <div className="mt-4 pt-4 border-t border-dashed border-border-subtle space-y-3">
+                        <div className="bg-surface-container-low/50 p-3 rounded-lg border border-border-subtle/50 text-xs">
+                          <span className="text-[10px] font-bold text-primary uppercase block mb-1.5 tracking-wider">
+                            Kunci Jawaban Acuan
+                          </span>
+                          <p className="font-mono text-on-surface-variant whitespace-pre-wrap">{matchedRubric.answer_key}</p>
+                        </div>
+                        {matchedRubric.rubric_criteria && matchedRubric.rubric_criteria.length > 0 && (
+                          <div>
+                            <span className="text-[10px] font-bold text-primary uppercase block mb-1 tracking-wider">
+                              Kriteria Penilaian Kunci
                             </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-outline italic">Kriteria penilaian tidak terpenuhi</span>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {matchedRubric.rubric_criteria.map((c, idx) => (
+                                <span key={idx} className="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-0.5 rounded text-[10px] font-semibold">
+                                  ✓ {c}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
+                    )}
+
+                    {/* Lecturer Custom Feedback Field */}
+                    <div className="mt-4 pt-4 border-t border-dashed border-border-subtle">
+                      <label className="text-[10px] font-bold text-on-surface-variant mb-1 block">UMPAN BALIK KOREKSI MANUAL DOSEN</label>
+                      <input
+                        className="w-full bg-transparent border-b border-outline-variant focus:border-primary focus:outline-none py-1.5 text-xs font-sans text-on-surface placeholder:text-outline/60"
+                        placeholder="Tambahkan catatan koreksi dari dosen..."
+                        type="text"
+                        value={item.feedback}
+                        onChange={(e) => handleFeedbackChange(item.question_number, e.target.value)}
+                      />
                     </div>
                   </div>
-
-                  {/* Lecturer Custom Feedback Field */}
-                  <div className="mt-4 pt-4 border-t border-dashed border-border-subtle">
-                    <label className="text-[10px] font-bold text-on-surface-variant mb-1 block">UMPAN BALIK KOREKSI MANUAL DOSEN</label>
-                    <input
-                      className="w-full bg-transparent border-b border-outline-variant focus:border-primary focus:outline-none py-1.5 text-xs font-sans text-on-surface placeholder:text-outline/60"
-                      placeholder="Tambahkan catatan koreksi dari dosen..."
-                      type="text"
-                      value={item.feedback}
-                      onChange={(e) => handleFeedbackChange(item.question_number, e.target.value)}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Overall Feedback Form */}
               {scores.length > 0 && (

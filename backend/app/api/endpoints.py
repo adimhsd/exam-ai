@@ -341,6 +341,107 @@ def get_system_logs(db: Session = Depends(get_db), current_user: models.User = D
     return db.query(models.SystemLog).order_by(models.SystemLog.created_at.desc()).all()
 
 
+# ==================== SUBMISSION EXTRA ACTIONS ====================
+
+@router.get("/submissions/{submission_id}/file")
+def get_submission_file(submission_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    import os
+    import requests
+    from fastapi.responses import FileResponse, StreamingResponse
+    
+    s = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Submission tidak ditemukan")
+        
+    # Jika url adalah file lokal
+    if os.path.exists(s.file_url):
+        ext = os.path.splitext(s.file_url)[1].lower()
+        media_type = "application/pdf" if ext == ".pdf" else f"image/{ext[1:]}" if ext in [".png", ".jpg", ".jpeg", ".webp", ".gif", ".tiff", ".bmp"] else "application/octet-stream"
+        return FileResponse(s.file_url, media_type=media_type)
+        
+    # Jika url adalah external URL, download dan alirkan (stream)
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        # Streaming response
+        r = requests.get(s.file_url, headers=headers, stream=True)
+        if r.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gagal mengunduh file eksternal")
+            
+        content_type = r.headers.get("content-type", "application/octet-stream")
+        return StreamingResponse(r.iter_content(chunk_size=4096), media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memuat berkas: {str(e)}")
+
+
+@router.post("/submissions/{submission_id}/regrade", response_model=schemas.GradingResultResponse)
+def regrade_submission(
+    submission_id: UUID,
+    payload: schemas.SubmissionRegradePayload,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(verify_dosen)
+):
+    submission = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission tidak ditemukan")
+        
+    # 1. Update status -> PROCESSING_GRADING
+    submission.status = "PROCESSING_GRADING"
+    db.commit()
+    
+    try:
+        # 2. Ambil rubrik
+        rubrics = db.query(models.Rubric).filter(models.Rubric.exam_id == submission.exam_id).order_by(models.Rubric.question_number).all()
+        
+        # 3. Panggil LLM grading dengan raw_ocr_text yang baru
+        from app.services.grading_service import evaluate_grading_ai
+        grading_data = evaluate_grading_ai(payload.raw_ocr_text, rubrics)
+        
+        # 4. Simpan ke db
+        grading_result = db.query(models.GradingResult).filter(models.GradingResult.submission_id == submission_id).first()
+        if not grading_result:
+            grading_result = models.GradingResult(submission_id=submission_id)
+            db.add(grading_result)
+            
+        grading_result.raw_ocr_text = payload.raw_ocr_text
+        grading_result.scores_breakdown = grading_data.get("scores", [])
+        grading_result.total_score = Decimal(str(grading_data.get("total_score", 0.0)))
+        grading_result.overall_feedback = grading_data.get("overall_feedback", "")
+        grading_result.confidence_score = Decimal(str(grading_data.get("confidence_score", 1.0)))
+        grading_result.is_reviewed = False
+        grading_result.final_score = grading_result.total_score
+        
+        submission.status = "COMPLETED"
+        db.commit()
+        db.refresh(grading_result)
+        
+        # Tambahkan log sistem sukses regrade
+        log = models.SystemLog(
+            event_type="SUBMISSION_REGRADE_SUCCESS",
+            message=f"Sukses melakukan penilaian ulang (re-grade) untuk mahasiswa {submission.student_name} (NIM: {submission.student_nim})",
+            token_used=1000, # Perkiraan
+            estimated_cost=Decimal("0.001") # Perkiraan GPT-4o-mini saja
+        )
+        db.add(log)
+        db.commit()
+        
+        return grading_result
+    except Exception as e:
+        print(f"Error during regrade for submission {submission_id}: {e}")
+        submission.status = "FAILED"
+        db.commit()
+        
+        # Log gagal
+        log = models.SystemLog(
+            event_type="SUBMISSION_REGRADE_FAILED",
+            message=f"Gagal melakukan penilaian ulang untuk mahasiswa {submission.student_name} (NIM: {submission.student_nim}). Error: {str(e)}",
+            token_used=0,
+            estimated_cost=Decimal("0.00")
+        )
+        db.add(log)
+        db.commit()
+        raise HTTPException(status_code=500, detail=f"Gagal melakukan penilaian ulang: {str(e)}")
+
+
 # ==================== SEED DATA ====================
 
 @router.post("/seed", status_code=status.HTTP_201_CREATED)
