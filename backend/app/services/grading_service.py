@@ -80,6 +80,29 @@ def perform_vision_ocr(image_bytes: bytes) -> str:
         print(f"Error calling OpenAI Vision: {e}")
         raise e
 
+def perform_chandra_ocr(file_path: str) -> tuple:
+    """Mengirim PDF atau gambar ke Datalab Hosted API (Chandra OCR 2)"""
+    if not settings.DATALAB_API_KEY:
+        raise ValueError("DATALAB_API_KEY tidak dikonfigurasi.")
+
+    from datalab_sdk import DatalabClient
+    from datalab_sdk.models import ConvertOptions
+
+    client = DatalabClient(api_key=settings.DATALAB_API_KEY)
+    # Gunakan Convert - Fast / Balanced (default mode="fast")
+    options = ConvertOptions(mode="fast")
+    print(f"[CHANDRA OCR] Mengirim file {file_path} ke Datalab Hosted API...")
+    
+    result = client.convert(file_path=file_path, options=options)
+    
+    if getattr(result, "error", None):
+        raise ValueError(f"Datalab API error: {result.error}")
+        
+    ocr_text = result.markdown or ""
+    page_count = getattr(result, "page_count", 1) or 1
+    print(f"[CHANDRA OCR] Berhasil mengekstrak {len(ocr_text)} karakter dari {page_count} halaman.")
+    return ocr_text, page_count
+
 def evaluate_grading_ai(raw_ocr_text: str, rubrics: list) -> dict:
     """Melakukan penilaian jawaban (scoring & feedback) berdasarkan teks OCR dan rubrik"""
     if not settings.OPENAI_API_KEY:
@@ -171,27 +194,47 @@ def evaluate_submission(db: Session, submission_id: str):
     submission.status = "PROCESSING_OCR"
     db.commit()
 
-    temp_pdf = None
+    temp_file_path = None
     try:
-        # Buat temporary file untuk menyimpan PDF
-        temp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        temp_pdf_path = temp_pdf.name
-        temp_pdf.close()
+        # Deteksi ekstensi file asli
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(submission.file_url)
+        path = parsed_url.path
+        _, ext = os.path.splitext(path)
+        if not ext:
+            ext = ".pdf"
+        elif ext.lower() not in [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".tiff", ".bmp"]:
+            ext = ".pdf"
 
-        # Download PDF dari URL
-        download_file(submission.file_url, temp_pdf_path)
+        # Buat temporary file untuk menyimpan berkas
+        temp_file = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+        temp_file_path = temp_file.name
+        temp_file.close()
 
-        # Render PDF ke halaman gambar
-        pages_bytes = render_pdf_to_images(temp_pdf_path)
+        # Download file ke path lokal
+        download_file(submission.file_url, temp_file_path)
 
-        # Transkripsi setiap halaman secara bertahap menggunakan Vision LLM
-        transcripts = []
-        for i, img_bytes in enumerate(pages_bytes):
-            print(f"Melakukan OCR untuk Submission {submission_id} Halaman {i+1}...")
-            page_text = perform_vision_ocr(img_bytes)
-            transcripts.append(f"--- Halaman {i+1} ---\n{page_text}")
-
-        raw_ocr_text = "\n\n".join(transcripts)
+        # Coba lakukan OCR dengan Chandra Hosted API
+        page_count = 1
+        raw_ocr_text = ""
+        try:
+            raw_ocr_text, page_count = perform_chandra_ocr(temp_file_path)
+        except Exception as ocr_err:
+            print(f"[CHANDRA OCR] Gagal memproses dengan Chandra, mencoba fallback Vision OCR... Error: {ocr_err}")
+            # Fallback ke Vision OCR jika Chandra gagal
+            if ext.lower() == ".pdf":
+                pages_bytes = render_pdf_to_images(temp_file_path)
+            else:
+                with open(temp_file_path, "rb") as f:
+                    pages_bytes = [f.read()]
+            
+            transcripts = []
+            for i, img_bytes in enumerate(pages_bytes):
+                print(f"[VISION FALLBACK] Melakukan OCR untuk Halaman {i+1}...")
+                page_text = perform_vision_ocr(img_bytes)
+                transcripts.append(f"--- Halaman {i+1} ---\n{page_text}")
+            raw_ocr_text = "\n\n".join(transcripts)
+            page_count = len(pages_bytes)
 
         # 2. Update status -> PROCESSING_GRADING
         submission.status = "PROCESSING_GRADING"
@@ -200,7 +243,7 @@ def evaluate_submission(db: Session, submission_id: str):
         # Ambil rubrik untuk ujian ini
         rubrics = db.query(Rubric).filter(Rubric.exam_id == submission.exam_id).order_by(Rubric.question_number).all()
 
-        # Panggil LLM untuk grading
+        # Panggil LLM untuk grading (GPT-4o Mini)
         grading_data = evaluate_grading_ai(raw_ocr_text, rubrics)
 
         # 3. Simpan hasil grading ke basis data
@@ -220,18 +263,20 @@ def evaluate_submission(db: Session, submission_id: str):
         submission.status = "COMPLETED"
         db.commit()
 
+        # Hitung estimasi biaya: Chandra fast ($0.004/hal) + GPT-4o-mini (~$0.001)
+        estimated_cost = Decimal(str(page_count * 0.004 + 0.001))
+
         # Tambahkan log sistem sukses
         log = SystemLog(
             event_type="SUBMISSION_PROCESSING_SUCCESS",
-            message=f"Sukses memproses lembar jawaban mahasiswa {submission.student_name} (NIM: {submission.student_nim})",
+            message=f"Sukses memproses lembar jawaban mahasiswa {submission.student_name} (NIM: {submission.student_nim}) menggunakan Chandra OCR 2",
             token_used=1500, # Perkiraan
-            estimated_cost=Decimal("0.02") # Perkiraan
+            estimated_cost=estimated_cost
         )
         db.add(log)
         db.commit()
 
-        # 4. Otomatisasi pengiriman hasil email langsung (Opsional di MVP - dikirim setelah review,
-        # tapi di PRD tertulis 'email hasil otomatis'. Kita kirim langsung sebagai default.)
+        # 4. Otomatisasi pengiriman hasil email langsung
         exam = db.query(Exam).filter(Exam.id == submission.exam_id).first()
         exam_title = exam.title if exam else "Ujian Essay"
         email_sent = send_evaluation_email(
@@ -260,5 +305,5 @@ def evaluate_submission(db: Session, submission_id: str):
         db.commit()
     finally:
         # Bersihkan file temporer
-        if temp_pdf and os.path.exists(temp_pdf_path):
-            os.remove(temp_pdf_path)
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)

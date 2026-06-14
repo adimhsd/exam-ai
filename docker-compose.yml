@@ -34,6 +34,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATALAB_API_KEY=${DATALAB_API_KEY}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - EMAIL_FROM=Exam System <no-reply@exam.adi-muhamad.my.id>
     depends_on:
@@ -52,6 +53,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATALAB_API_KEY=${DATALAB_API_KEY}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - EMAIL_FROM=Exam System <no-reply@exam.adi-muhamad.my.id>
     depends_on:
