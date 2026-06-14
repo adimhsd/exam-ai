@@ -62,14 +62,11 @@ services:
   frontend:
     build: ./frontend
     container_name: exam-ai-frontend
-    command: npm run dev
-    volumes:
-      - ./frontend:/workspace
-      - /workspace/node_modules
     ports:
-      - "3000:3000"
+      - "8080:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PRIVATE_API_URL=http://backend:8000/api/:path*
+      - HOSTNAME=0.0.0.0
     depends_on:
       - backend
     restart: unless-stopped

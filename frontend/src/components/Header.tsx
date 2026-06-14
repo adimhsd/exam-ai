@@ -15,7 +15,7 @@ export default function Header({ title }: HeaderProps) {
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
           <input
             className="pl-10 pr-4 py-1.5 bg-surface-container-low border border-border-subtle rounded-lg text-body-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-            placeholder="Search assessments..."
+            placeholder="Cari penilaian/ujian..."
             type="text"
           />
         </div>

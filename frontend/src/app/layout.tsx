@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -18,8 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "exam-ai | Academic Assessment",
-  description: "AI Exam Assessment System - Next-generation academic assessment powered by multimodal vision AI technology.",
+  title: "exam-ai | Penilaian Akademik",
+  description: "Sistem Penilaian Ujian AI - Sistem penilaian akademik generasi berikutnya yang ditenagai oleh teknologi Vision AI multimodal.",
 };
 
 export default function RootLayout({
@@ -29,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${inter.variable} ${hankenGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased light`}
     >
       <head>
@@ -39,7 +40,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-on-surface font-sans min-h-screen">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

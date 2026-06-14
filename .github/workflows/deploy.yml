@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            echo "=== [1/5] Masuk ke direktori project ==="
+            cd /root/exam-ai
+
+            echo "=== [2/5] Pull kode terbaru dari GitHub ==="
+            git pull origin main
+
+            echo "=== [3/5] Rebuild dan restart container frontend ==="
+            docker compose build --no-cache frontend
+
+            echo "=== [4/5] Restart semua service ==="
+            docker compose up -d --force-recreate frontend
+
+            echo "=== [5/5] Verifikasi ==="
+            docker compose ps
+            docker inspect exam-ai-frontend --format="CMD: {{.Config.Cmd}}"
+
+            echo "=== DEPLOYMENT SELESAI ==="

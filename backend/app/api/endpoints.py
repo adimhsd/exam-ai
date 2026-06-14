@@ -1,22 +1,85 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import List, Optional
 from decimal import Decimal
+import jwt
 
 from app.core.database import get_db
 from app.models import models
 from app.schemas import schemas
 from app.workers.tasks import process_submission_task
+from app.services.resend_service import send_evaluation_email
+from app.core.config import settings
+from app.core import security
 
 router = APIRouter(prefix="/api/v1")
+
+# ==================== SECURITY & AUTH ====================
+
+security_bearer = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_bearer), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token tidak valid: sub tidak ditemukan",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token tidak valid atau kedaluwarsa",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Pengguna tidak ditemukan",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+def verify_dosen(current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ["dosen", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak. Hanya Dosen/Admin yang diperbolehkan."
+        )
+    return current_user
+
+@router.post("/auth/login", response_model=schemas.Token)
+def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user or not security.verify_password(payload.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email atau password salah"
+        )
+    
+    # Generate token
+    access_token = security.create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_name": user.name,
+        "user_email": user.email,
+        "user_role": user.role
+    }
+
 
 # ==================== OVERVIEW / STATS ====================
 
 @router.get("/overview/stats")
-def get_overview_stats(db: Session = Depends(get_db)):
+def get_overview_stats(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     total_submissions = db.query(models.Submission).count()
     processing_submissions = db.query(models.Submission).filter(
         models.Submission.status.in_(["PROCESSING_OCR", "PROCESSING_GRADING"])
@@ -37,7 +100,7 @@ def get_overview_stats(db: Session = Depends(get_db)):
     }
 
 @router.get("/overview/chart-data")
-def get_chart_data(db: Session = Depends(get_db)):
+def get_chart_data(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     # Buat dummy chart data untuk visualisasi 24 jam terakhir
     # Di masa depan ini bisa memetakan volume submit real-time per jam
     data = []
@@ -52,7 +115,7 @@ def get_chart_data(db: Session = Depends(get_db)):
     return data
 
 @router.get("/overview/recent-errors")
-def get_recent_errors(db: Session = Depends(get_db)):
+def get_recent_errors(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     # Ambil logs bertipe FAILED
     logs = db.query(models.SystemLog).filter(
         models.SystemLog.event_type.like("%FAIL%")
@@ -113,11 +176,11 @@ def accept_submission_webhook(payload: schemas.SubmissionWebhookPayload, db: Ses
 # ==================== COURSES ====================
 
 @router.get("/courses", response_model=List[schemas.CourseResponse])
-def get_courses(db: Session = Depends(get_db)):
+def get_courses(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     return db.query(models.Course).all()
 
 @router.post("/courses", response_model=schemas.CourseResponse, status_code=status.HTTP_201_CREATED)
-def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
+def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     db_course = models.Course(**course.dict())
     db.add(db_course)
     db.commit()
@@ -135,7 +198,7 @@ def get_exams(course_id: Optional[UUID] = None, db: Session = Depends(get_db)):
     return query.all()
 
 @router.post("/exams", response_model=schemas.ExamResponse, status_code=status.HTTP_201_CREATED)
-def create_exam(exam: schemas.ExamCreate, db: Session = Depends(get_db)):
+def create_exam(exam: schemas.ExamCreate, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     db_exam = models.Exam(**exam.dict())
     db.add(db_exam)
     db.commit()
@@ -146,11 +209,11 @@ def create_exam(exam: schemas.ExamCreate, db: Session = Depends(get_db)):
 # ==================== RUBRICS ====================
 
 @router.get("/exams/{exam_id}/rubrics", response_model=List[schemas.RubricResponse])
-def get_exam_rubrics(exam_id: UUID, db: Session = Depends(get_db)):
+def get_exam_rubrics(exam_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     return db.query(models.Rubric).filter(models.Rubric.exam_id == exam_id).order_by(models.Rubric.question_number).all()
 
 @router.post("/rubrics", response_model=schemas.RubricResponse, status_code=status.HTTP_201_CREATED)
-def create_rubric(rubric: schemas.RubricCreate, db: Session = Depends(get_db)):
+def create_rubric(rubric: schemas.RubricCreate, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     db_rubric = models.Rubric(**rubric.dict())
     db.add(db_rubric)
     db.commit()
@@ -161,7 +224,7 @@ def create_rubric(rubric: schemas.RubricCreate, db: Session = Depends(get_db)):
 # ==================== SUBMISSIONS ====================
 
 @router.get("/submissions", response_model=List[schemas.SubmissionDetailResponse])
-def get_submissions(db: Session = Depends(get_db)):
+def get_submissions(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     submissions = db.query(models.Submission).order_by(models.Submission.created_at.desc()).all()
     results = []
     for s in submissions:
@@ -190,7 +253,7 @@ def get_submissions(db: Session = Depends(get_db)):
     return results
 
 @router.get("/submissions/{submission_id}", response_model=schemas.SubmissionDetailResponse)
-def get_submission_detail(submission_id: UUID, db: Session = Depends(get_db)):
+def get_submission_detail(submission_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     s = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission tidak ditemukan")
@@ -217,7 +280,7 @@ def get_submission_detail(submission_id: UUID, db: Session = Depends(get_db)):
     )
 
 @router.post("/submissions/{submission_id}/process")
-def trigger_process_submission(submission_id: UUID, db: Session = Depends(get_db)):
+def trigger_process_submission(submission_id: UUID, db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     s = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission tidak ditemukan")
@@ -236,7 +299,8 @@ def trigger_process_submission(submission_id: UUID, db: Session = Depends(get_db
 def review_grading_result(
     submission_id: UUID,
     payload: schemas.GradingResultReview,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(verify_dosen)
 ):
     grading_result = db.query(models.GradingResult).filter(models.GradingResult.submission_id == submission_id).first()
     if not grading_result:
@@ -273,7 +337,7 @@ def review_grading_result(
 # ==================== SYSTEM LOGS ====================
 
 @router.get("/logs", response_model=List[schemas.SystemLogResponse])
-def get_system_logs(db: Session = Depends(get_db)):
+def get_system_logs(db: Session = Depends(get_db), current_user: models.User = Depends(verify_dosen)):
     return db.query(models.SystemLog).order_by(models.SystemLog.created_at.desc()).all()
 
 
@@ -281,6 +345,20 @@ def get_system_logs(db: Session = Depends(get_db)):
 
 @router.post("/seed", status_code=status.HTTP_201_CREATED)
 def seed_database(db: Session = Depends(get_db)):
+    # 0. Buat User Dosen/Admin bawaan jika belum ada
+    admin_user = db.query(models.User).filter(models.User.email == "adi.examai@gmail.com").first()
+    if not admin_user:
+        hashed_password = security.get_password_hash("2h4r3Cantik")
+        admin_user = models.User(
+            name="Adi Muhamad",
+            email="adi.examai@gmail.com",
+            hashed_password=hashed_password,
+            role="admin"
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+
     # 1. Buat Course
     course1 = db.query(models.Course).filter(models.Course.code == "CS-301").first()
     if not course1:
@@ -309,7 +387,7 @@ def seed_database(db: Session = Depends(get_db)):
     if not exam1:
         exam1 = models.Exam(
             course_id=course1.id,
-            title="Mid-Term Assessment: Frontend Basics",
+            title="Ujian Tengah Semester: Dasar-Dasar Frontend",
             is_active=True
         )
         db.add(exam1)
@@ -320,26 +398,26 @@ def seed_database(db: Session = Depends(get_db)):
         r1 = models.Rubric(
             exam_id=exam1.id,
             question_number=1,
-            question_text="Define the Second Law of Thermodynamics.",
-            answer_key="The total entropy of an isolated system can never decrease over time...",
+            question_text="Definisikan Hukum Kedua Termodinamika.",
+            answer_key="Entropi total dari suatu sistem terisolasi tidak pernah berkurang seiring waktu...",
             max_score=5,
-            rubric_criteria=["entropy", "isolated system", "reversible"]
+            rubric_criteria=["entropi", "sistem terisolasi", "reversibel"]
         )
         r2 = models.Rubric(
             exam_id=exam1.id,
             question_number=2,
-            question_text="Calculate the efficiency of the heat engine.",
-            answer_key="Efficiency = 1 - Tc/Th = 1 - 300/900 = 0.67...",
+            question_text="Hitung efisiensi mesin kalor.",
+            answer_key="Efisiensi = 1 - Tc/Th = 1 - 300/900 = 0.67...",
             max_score=5,
-            rubric_criteria=["efficiency formulas", "T_c/T_h relationship", "result calculation"]
+            rubric_criteria=["rumus efisiensi", "hubungan T_c/T_h", "perhitungan hasil"]
         )
         r3 = models.Rubric(
             exam_id=exam1.id,
             question_number=3,
-            question_text="Explain the Carnot Cycle steps.",
-            answer_key="1. Isothermal Expansion, 2. Adiabatic Expansion, 3. Isothermal Compression, 4. Adiabatic Compression.",
+            question_text="Jelaskan tahapan Siklus Carnot.",
+            answer_key="1. Ekspansi Isotermal, 2. Ekspansi Adiabatik, 3. Kompresi Isotermal, 4. Kompresi Adiabatik.",
             max_score=10,
-            rubric_criteria=["four steps list", "isothermal expansion", "adiabatic expansion", "compression cycles"]
+            rubric_criteria=["daftar empat langkah", "ekspansi isotermal", "ekspansi adiabatik", "siklus kompresi"]
         )
         db.add_all([r1, r2, r3])
         db.commit()
@@ -348,7 +426,7 @@ def seed_database(db: Session = Depends(get_db)):
     if not exam2:
         exam2 = models.Exam(
             course_id=course2.id,
-            title="SQL Performance Tuning",
+            title="Penyetelan Performa SQL",
             is_active=True
         )
         db.add(exam2)
@@ -358,13 +436,13 @@ def seed_database(db: Session = Depends(get_db)):
         r4 = models.Rubric(
             exam_id=exam2.id,
             question_number=1,
-            question_text="Explain the difference between index scan and index seek.",
-            answer_key="Index seek traverses index tree, index scan scans all pages...",
+            question_text="Jelaskan perbedaan antara index scan dan index seek.",
+            answer_key="Index seek menelusuri pohon indeks, index scan memindai semua halaman...",
             max_score=10,
-            rubric_criteria=["tree traversal", "leaf nodes scan", "performance trade-offs"]
+            rubric_criteria=["penelusuran pohon", "pemindaian node daun", "trade-off performa"]
         )
         db.add(r4)
         db.commit()
 
-    return {"message": "Database successfully seeded with courses, exams, and rubrics."}
+    return {"message": "Database berhasil di-seed dengan data kelas, ujian, dan rubrik."}
 

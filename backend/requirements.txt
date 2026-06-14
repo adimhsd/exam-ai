@@ -11,3 +11,8 @@ openai>=1.14.1
 resend>=0.8.0
 python-dotenv>=1.0.1
 python-multipart>=0.0.9
+PyJWT>=2.8.0
+bcrypt>=4.1.0
+alembic>=1.13.1
+
+

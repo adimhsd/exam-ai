@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface ScoreItem {
   question_number: number;
@@ -43,6 +44,7 @@ export default function GradingReviewPage() {
   const params = useParams();
   const router = useRouter();
   const submissionId = params.id as string;
+  const { authFetch } = useAuth();
 
   const [submission, setSubmission] = useState<SubmissionDetail | null>(null);
   const [scores, setScores] = useState<ScoreItem[]>([]);
@@ -60,7 +62,7 @@ export default function GradingReviewPage() {
   const fetchSubmissionDetail = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}`);
+      const res = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}`);
       if (!res.ok) throw new Error("Gagal mengambil detail submission");
       const data: SubmissionDetail = await res.json();
       setSubmission(data);
@@ -122,14 +124,14 @@ export default function GradingReviewPage() {
   const handleReprocess = async () => {
     setIsReprocessing(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/process`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/process`, {
         method: "POST",
       });
       if (res.ok) {
         alert("Proses ulang berhasil dipicu! Halaman akan dimuat ulang ketika selesai.");
         // Poll status
         const poll = setInterval(async () => {
-          const check = await fetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}`);
+          const check = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}`);
           const cData: SubmissionDetail = await check.json();
           if (cData.status === "COMPLETED" || cData.status === "FAILED") {
             clearInterval(poll);
@@ -157,7 +159,7 @@ export default function GradingReviewPage() {
         is_reviewed: true,
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/grading`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/submissions/${submissionId}/grading`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -190,7 +192,7 @@ export default function GradingReviewPage() {
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-lg font-bold text-status-failed mb-4">Submission Tidak Ditemukan</p>
-          <Link href="/" className="bg-primary text-white px-6 py-2 rounded">Kembali ke Dashboard</Link>
+          <Link href="/" className="bg-primary text-white px-6 py-2 rounded">Kembali ke Dasbor</Link>
         </div>
       </div>
     );
@@ -215,11 +217,11 @@ export default function GradingReviewPage() {
             exam-ai
           </Link>
           <div className="hidden md:flex gap-6 items-center border-l border-border-subtle pl-6">
-            <span className="text-on-surface-variant font-sans text-[10px] font-bold uppercase tracking-widest">Active Review</span>
+            <span className="text-on-surface-variant font-sans text-[10px] font-bold uppercase tracking-widest">Penilaian Aktif</span>
             <div className="flex items-center gap-2 text-body-sm">
               <span className="font-bold text-primary truncate max-w-xs">{submission.student_name}</span>
               <span className="text-on-surface-variant opacity-60">/ NIM: {submission.student_nim}</span>
-              <span className="text-on-surface-variant opacity-60">/ {confidenceScore}% AI Confidence</span>
+              <span className="text-on-surface-variant opacity-60">/ Akurasi AI: {confidenceScore}%</span>
             </div>
           </div>
         </div>
@@ -235,7 +237,7 @@ export default function GradingReviewPage() {
             </span>
             <span className="text-xs font-bold text-on-surface uppercase tracking-wider">{submission.status}</span>
           </div>
-          <Link href="/" className="p-2 hover:bg-surface-container-low transition-all rounded-full" title="Dashboard">
+          <Link href="/" className="p-2 hover:bg-surface-container-low transition-all rounded-full" title="Dasbor">
             <span className="material-symbols-outlined text-on-surface-variant">dashboard</span>
           </Link>
         </div>
@@ -267,11 +269,11 @@ export default function GradingReviewPage() {
                   <span className="material-symbols-outlined text-on-surface-variant">zoom_in</span>
                 </button>
                 <div className="h-4 w-[1px] bg-border-subtle mx-2"></div>
-                <span className="text-xs font-semibold">Scale: {zoom}%</span>
+                <span className="text-xs font-semibold">Skala: {zoom}%</span>
               </div>
               <button onClick={() => setRotation(r => (r + 90) % 360)} className="flex items-center gap-1 text-primary text-xs font-bold">
                 <span className="material-symbols-outlined text-[18px]">rotate_right</span>
-                Rotate
+                Putar
               </button>
             </div>
             
@@ -288,7 +290,7 @@ export default function GradingReviewPage() {
                 {/* Visual Exam sheet from URL */}
                 <img
                   className="w-full h-auto object-contain"
-                  alt="Student exam sheet scan copy"
+                  alt="Salinan pemindaian lembar jawaban mahasiswa"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJeW-2Hmai7cJeF62KDn9Xl2oUjbFFBwAXx_QTTpraybbtF_S4A9fT429WU8sgkIkqTwMkQJHdbqlVzZ8PJMZxE72TswIPUK6tWjkIzzXtSzwprmnEid6MZo7NdFJo89OgN1YHjTcIPh8CKwZsASLWEB1tRKt4XdPw2hh9KeFimcA36F38061-Nb_qsNqqiMLOkeFoiBXkPUgdaUn0RX_XnDQijl6sWrudoHeIW4isccYc0iaOWZ2P1HxVlDtwW7YsaKM6Mqv-mPk"
                 />
               </div>
@@ -304,10 +306,10 @@ export default function GradingReviewPage() {
           {/* Right panel: Grading & OCR Panel */}
           <section className="flex-grow flex flex-col bg-white overflow-hidden" style={{ width: `${100 - leftWidth}%` }}>
             <div className="bg-surface h-12 border-b border-border-subtle flex items-center justify-between px-6">
-              <h2 className="font-display text-body-md font-bold text-on-surface">Grading Assessment</h2>
+              <h2 className="font-display text-body-md font-bold text-on-surface">Lembar Penilaian Nilai & Evaluasi</h2>
               <div className="flex gap-4 items-center">
                 <span className="text-body-sm text-on-surface-variant">
-                  Total Score: <span className="font-bold text-on-surface">
+                  Total Nilai: <span className="font-bold text-on-surface">
                     {scores.reduce((sum, item) => sum + item.score, 0).toFixed(1)}
                   </span>
                 </span>
@@ -318,9 +320,9 @@ export default function GradingReviewPage() {
               {/* Overall Confidence Indicator */}
               <div className="bg-surface-muted p-4 rounded-xl border border-border-subtle flex flex-col gap-2">
                 <div className="flex justify-between text-body-sm">
-                  <span className="font-semibold text-on-surface-variant">AI Transcription Confidence</span>
+                  <span className="font-semibold text-on-surface-variant">Tingkat Keyakinan Transkripsi AI</span>
                   <span className={`font-bold ${confidenceScore >= 80 ? "text-ai-confidence-high" : "text-ai-confidence-low"}`}>
-                    {confidenceScore >= 80 ? "High" : "Low"} ({confidenceScore}%)
+                    {confidenceScore >= 80 ? "Tinggi" : "Rendah"} ({confidenceScore}%)
                   </span>
                 </div>
                 <div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
@@ -370,12 +372,12 @@ export default function GradingReviewPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <span className="font-sans text-primary uppercase text-[10px] font-extrabold tracking-widest block mb-1">
-                        Question {String(item.question_number).padStart(2, "0")}
+                        Soal {String(item.question_number).padStart(2, "0")}
                       </span>
                       <h3 className="font-display text-body-md font-bold text-on-surface">
-                        {item.question_number === 1 && "Define the Second Law of Thermodynamics."}
-                        {item.question_number === 2 && "Calculate the efficiency of the heat engine."}
-                        {item.question_number === 3 && "Explain the Carnot Cycle steps."}
+                        {item.question_number === 1 && "Definisikan Hukum Kedua Termodinamika."}
+                        {item.question_number === 2 && "Hitung efisiensi mesin kalor."}
+                        {item.question_number === 3 && "Jelaskan tahapan Siklus Carnot."}
                         {item.question_number > 3 && "Soal Ujian Esai"}
                       </h3>
                     </div>
@@ -397,7 +399,7 @@ export default function GradingReviewPage() {
 
                   <div className="mb-4">
                     <label className="text-[10px] font-bold text-on-surface-variant mb-1.5 block tracking-wider">
-                      TRANSCRIPTION RESULT (EDITABLE)
+                      HASIL TRANSKRIPSI OCR (BISA DIEDIT)
                     </label>
                     <div className="font-mono text-xs text-on-surface bg-surface-muted p-3 border border-border-subtle rounded-lg whitespace-pre-wrap">
                       {rawOcr ? (
@@ -410,11 +412,11 @@ export default function GradingReviewPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-3 bg-ai-confidence-high/5 rounded-lg border border-ai-confidence-high/20">
-                      <p className="text-[10px] font-bold text-ai-confidence-high mb-1 uppercase tracking-wider">AI Reasoning & Feedback</p>
+                      <p className="text-[10px] font-bold text-ai-confidence-high mb-1 uppercase tracking-wider">Analisis & Umpan Balik AI</p>
                       <p className="text-xs leading-relaxed text-on-surface">{item.feedback || "Jawaban dianalisis secara otomatis berdasarkan rubrik kriteria poin."}</p>
                     </div>
                     <div className="p-3 bg-surface-container-low rounded-lg border border-border-subtle">
-                      <p className="text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Criteria Met</p>
+                      <p className="text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Kriteria Terpenuhi</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {item.criteria_met && item.criteria_met.length > 0 ? (
                           item.criteria_met.map((c, i) => (
@@ -431,7 +433,7 @@ export default function GradingReviewPage() {
 
                   {/* Lecturer Custom Feedback Field */}
                   <div className="mt-4 pt-4 border-t border-dashed border-border-subtle">
-                    <label className="text-[10px] font-bold text-on-surface-variant mb-1 block">LECTURER CORRECTION FEEDBACK</label>
+                    <label className="text-[10px] font-bold text-on-surface-variant mb-1 block">UMPAN BALIK KOREKSI MANUAL DOSEN</label>
                     <input
                       className="w-full bg-transparent border-b border-outline-variant focus:border-primary focus:outline-none py-1.5 text-xs font-sans text-on-surface placeholder:text-outline/60"
                       placeholder="Tambahkan catatan koreksi dari dosen..."
@@ -467,7 +469,7 @@ export default function GradingReviewPage() {
                   className="flex items-center gap-2 px-5 py-2.5 border border-outline-variant rounded-lg font-bold text-xs hover:bg-surface-container-highest transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined text-sm">sync</span>
-                  {isReprocessing ? "Running AI..." : "Recalculate AI"}
+                  {isReprocessing ? "Memproses AI..." : "Hitung Ulang AI"}
                 </button>
                 <Link
                   href="/"
@@ -482,7 +484,7 @@ export default function GradingReviewPage() {
                 disabled={isSaving || scores.length === 0}
                 className="flex items-center gap-3 px-8 py-3 bg-primary text-white rounded-lg font-bold text-body-sm shadow-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
               >
-                {isSaving ? "Saving..." : "Approve & Send Email"}
+                {isSaving ? "Menyimpan..." : "Setujui & Kirim Email"}
                 <span className="material-symbols-outlined text-lg">send</span>
               </button>
             </div>

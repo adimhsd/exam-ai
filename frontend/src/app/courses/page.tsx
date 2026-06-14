@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface Course {
   id: string;
@@ -31,6 +32,7 @@ interface Rubric {
 }
 
 export default function CoursesExamsPage() {
+  const { authFetch } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExamRubrics, setSelectedExamRubrics] = useState<Rubric[]>([]);
@@ -42,11 +44,11 @@ export default function CoursesExamsPage() {
   const fetchCoursesAndExams = async () => {
     try {
       setIsLoading(true);
-      const coursesRes = await fetch(`${API_BASE_URL}/api/v1/courses`);
+      const coursesRes = await authFetch(`${API_BASE_URL}/api/v1/courses`);
       const coursesData = await coursesRes.json();
       setCourses(coursesData);
 
-      const examsRes = await fetch(`${API_BASE_URL}/api/v1/exams`);
+      const examsRes = await authFetch(`${API_BASE_URL}/api/v1/exams`);
       const examsData = await examsRes.json();
       setExams(examsData);
     } catch (err) {
@@ -63,7 +65,7 @@ export default function CoursesExamsPage() {
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/seed`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/seed`, {
         method: "POST",
       });
       if (res.ok) {
@@ -82,7 +84,7 @@ export default function CoursesExamsPage() {
 
   const handleManageRubric = async (examId: string, examTitle: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/exams/${examId}/rubrics`);
+      const res = await authFetch(`${API_BASE_URL}/api/v1/exams/${examId}/rubrics`);
       if (res.ok) {
         const rubricsData = await res.json();
         setSelectedExamRubrics(rubricsData);
@@ -102,7 +104,7 @@ export default function CoursesExamsPage() {
       {/* Main Content Area */}
       <div className="ml-sidebar-width flex-grow flex flex-col min-h-screen">
         {/* Header */}
-        <Header title="Courses & Exams" />
+        <Header title="Mata Kuliah & Ujian" />
 
         {/* Canvas Area */}
         <main className="p-margin-desktop max-w-container-max mx-auto w-full">
@@ -115,7 +117,7 @@ export default function CoursesExamsPage() {
                 className="bg-primary text-white px-6 py-2.5 flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all font-semibold rounded-lg text-body-sm shadow"
               >
                 <span className="material-symbols-outlined text-lg">database</span>
-                {isSeeding ? "Seeding..." : "Seed Demo Data"}
+                {isSeeding ? "Menyemai..." : "Seed Data Demo"}
               </button>
             </div>
           </div>
@@ -124,12 +126,12 @@ export default function CoursesExamsPage() {
           <section className="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-8">
             <div className="col-span-1 md:col-span-2 bg-primary-container text-on-primary-container p-6 rounded-xl flex flex-col justify-between overflow-hidden relative">
               <div className="z-10">
-                <p className="text-xs font-semibold uppercase opacity-80 mb-1">Total Active Students</p>
-                <p className="text-display-lg font-display font-extrabold leading-tight">1,248</p>
+                <p className="text-xs font-semibold uppercase opacity-80 mb-1">Total Mahasiswa Aktif</p>
+                <p className="text-display-lg font-display font-extrabold leading-tight">1.248</p>
               </div>
               <div className="mt-4 z-10 flex items-center gap-2 text-status-completed font-semibold">
                 <span className="material-symbols-outlined text-sm">trending_up</span>
-                <span className="text-body-sm">+12% from last semester</span>
+                <span className="text-body-sm">+12% dari semester lalu</span>
               </div>
               <div className="absolute -right-4 -bottom-4 opacity-10">
                 <span className="material-symbols-outlined !text-9xl">groups</span>
@@ -138,7 +140,7 @@ export default function CoursesExamsPage() {
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle flex flex-col justify-between">
               <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase mb-1">Ongoing Exams</p>
+                <p className="text-xs font-semibold text-on-surface-variant uppercase mb-1">Ujian Berlangsung</p>
                 <p className="text-headline-lg font-display font-bold text-on-surface">{exams.length}</p>
               </div>
               <div className="mt-4 flex -space-x-2">
@@ -150,7 +152,7 @@ export default function CoursesExamsPage() {
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle flex flex-col justify-between">
               <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase mb-1">Grading Confidence</p>
+                <p className="text-xs font-semibold text-on-surface-variant uppercase mb-1">Tingkat Akurasi AI</p>
                 <p className="text-headline-lg font-display font-bold text-ai-confidence-high">98.2%</p>
               </div>
               <div className="mt-4 w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
@@ -195,7 +197,7 @@ export default function CoursesExamsPage() {
                         <div>
                           <h3 className="font-display text-xl font-bold text-on-surface">{course.name}</h3>
                           <p className="text-on-surface-variant text-body-sm">
-                            Course ID: {course.code} • Dosen: {course.lecturer_name}
+                            Kode Mata Kuliah: {course.code} • Dosen: {course.lecturer_name}
                           </p>
                         </div>
                       </div>
@@ -210,7 +212,7 @@ export default function CoursesExamsPage() {
                           <div>
                             <div className="flex justify-between items-start mb-4">
                               <span className="bg-status-completed/10 text-status-completed px-2.5 py-1 text-xs font-bold rounded uppercase tracking-wider">
-                                Active
+                                Aktif
                               </span>
                             </div>
                             <h4 className="font-display text-lg font-bold mb-2 group-hover:text-primary transition-colors line-clamp-1">
@@ -226,11 +228,11 @@ export default function CoursesExamsPage() {
                           <div>
                             <div className="flex justify-between items-center mb-6">
                               <div className="flex flex-col">
-                                <span className="text-[10px] text-outline uppercase font-bold">Students</span>
+                                <span className="text-[10px] text-outline uppercase font-bold">Mahasiswa</span>
                                 <span className="font-bold text-sm">312/320</span>
                               </div>
                               <div className="flex flex-col text-right">
-                                <span className="text-[10px] text-outline uppercase font-bold">Avg. Score</span>
+                                <span className="text-[10px] text-outline uppercase font-bold">Rata-rata Nilai</span>
                                 <span className="font-bold text-primary text-sm">82.4</span>
                               </div>
                             </div>
@@ -239,7 +241,7 @@ export default function CoursesExamsPage() {
                               className="w-full py-3 bg-surface-container-low text-primary font-bold hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-2 text-body-sm"
                             >
                               <span className="material-symbols-outlined text-sm">rule</span>
-                              Manage Rubric
+                              Kelola Rubrik
                             </button>
                           </div>
                         </div>
@@ -250,8 +252,8 @@ export default function CoursesExamsPage() {
                         <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-on-primary">
                           <span className="material-symbols-outlined">add</span>
                         </div>
-                        <span className="font-bold text-body-sm">Create New Exam</span>
-                        <span className="text-xs opacity-60">Add for {course.name}</span>
+                        <span className="font-bold text-body-sm">Buat Ujian Baru</span>
+                        <span className="text-xs opacity-60">Tambah untuk {course.name}</span>
                       </button>
                     </div>
                   </section>
@@ -269,7 +271,7 @@ export default function CoursesExamsPage() {
             <div className="bg-primary text-white p-6 flex justify-between items-center">
               <div>
                 <h3 className="font-display text-lg font-bold">{activeRubricExamTitle}</h3>
-                <p className="text-xs opacity-80">Configured AI Grading Rubrics</p>
+                <p className="text-xs opacity-80">Konfigurasi Rubrik Penilaian AI</p>
               </div>
               <button
                 onClick={() => setIsRubricModalOpen(false)}
@@ -287,7 +289,7 @@ export default function CoursesExamsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-semibold text-primary">Soal #{rubric.question_number}</span>
                       <span className="text-xs font-bold bg-primary-container text-on-primary-container px-2.5 py-0.5 rounded">
-                        Max: {rubric.max_score} Poin
+                        Maks: {rubric.max_score} Poin
                       </span>
                     </div>
                     <p className="font-bold text-body-sm mb-2">{rubric.question_text}</p>

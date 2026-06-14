@@ -46,3 +46,10 @@ pip-delete-this-directory.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Deployment scripts (contains credentials)
+deploy_vps.py
+backend/check_vps.py
+
+# Package lock (generated during Docker build)
+frontend/package-lock.json

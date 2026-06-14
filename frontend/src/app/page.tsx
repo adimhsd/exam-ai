@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { useAuth } from "@/context/AuthContext";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface Stats {
   total_submissions: number;
@@ -38,6 +39,7 @@ interface ChartItem {
 }
 
 export default function Dashboard() {
+  const { authFetch } = useAuth();
   const [stats, setStats] = useState<Stats>({
     total_submissions: 0,
     processing: 0,
@@ -53,19 +55,19 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const statsRes = await fetch(`${API_BASE_URL}/api/v1/overview/stats`);
+        const statsRes = await authFetch(`${API_BASE_URL}/api/v1/overview/stats`);
         const statsData = await statsRes.json();
         setStats(statsData);
 
-        const subRes = await fetch(`${API_BASE_URL}/api/v1/submissions`);
+        const subRes = await authFetch(`${API_BASE_URL}/api/v1/submissions`);
         const subData = await subRes.json();
         setSubmissions(subData);
 
-        const errRes = await fetch(`${API_BASE_URL}/api/v1/overview/recent-errors`);
+        const errRes = await authFetch(`${API_BASE_URL}/api/v1/overview/recent-errors`);
         const errData = await errRes.json();
         setRecentErrors(errData);
 
-        const chartRes = await fetch(`${API_BASE_URL}/api/v1/overview/chart-data`);
+        const chartRes = await authFetch(`${API_BASE_URL}/api/v1/overview/chart-data`);
         const chartVal = await chartRes.json();
         setChartData(chartVal);
       } catch (err) {
@@ -78,7 +80,7 @@ export default function Dashboard() {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authFetch]);
 
   // Format timestamp ISO to time string
   const formatTime = (isoString: string) => {
@@ -164,7 +166,7 @@ export default function Dashboard() {
       {/* Main Wrapper */}
       <div className="ml-sidebar-width flex-grow flex flex-col min-h-screen">
         {/* Top App Bar */}
-        <Header title="Overview" />
+        <Header title="Ringkasan" />
 
         {/* Main Content Area */}
         <main className="flex-1 p-margin-desktop max-w-container-max mx-auto w-full">
@@ -172,7 +174,7 @@ export default function Dashboard() {
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-margin-desktop">
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex justify-between items-start">
-                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Total Submissions</span>
+                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Total Jawaban</span>
                 <span className="material-symbols-outlined text-primary bg-primary-fixed/30 p-1.5 rounded-lg">upload_file</span>
               </div>
               <p className="font-display text-display-lg text-on-surface leading-tight">
@@ -180,13 +182,13 @@ export default function Dashboard() {
               </p>
               <div className="flex items-center gap-1 text-ai-confidence-high text-body-sm">
                 <span className="material-symbols-outlined text-sm">trending_up</span>
-                <span>Active submissions database</span>
+                <span>Basis data berkas masuk</span>
               </div>
             </div>
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex justify-between items-start">
-                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Processing</span>
+                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Sedang Diproses</span>
                 <span className="material-symbols-outlined text-status-processing bg-status-processing/10 p-1.5 rounded-lg">sync</span>
               </div>
               <p className="font-display text-display-lg text-on-surface leading-tight">
@@ -194,13 +196,13 @@ export default function Dashboard() {
               </p>
               <div className="flex items-center gap-1 text-on-surface-variant text-body-sm opacity-80">
                 <span className="material-symbols-outlined text-sm">timer</span>
-                <span>Active Celery Worker</span>
+                <span>Worker Celery Aktif</span>
               </div>
             </div>
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex justify-between items-start">
-                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Completed</span>
+                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Selesai Dinilai</span>
                 <span className="material-symbols-outlined text-status-completed bg-status-completed/10 p-1.5 rounded-lg">check_circle</span>
               </div>
               <p className="font-display text-display-lg text-on-surface leading-tight">
@@ -212,14 +214,14 @@ export default function Dashboard() {
                   {stats.total_submissions > 0
                     ? ((stats.completed / stats.total_submissions) * 100).toFixed(1)
                     : 0}
-                  % Completion Rate
+                  % Tingkat Penyelesaian
                 </span>
               </div>
             </div>
 
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex justify-between items-start">
-                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Avg. Score</span>
+                <span className="text-on-surface-variant font-sans text-xs uppercase font-bold tracking-wider">Rata-rata Nilai</span>
                 <span className="material-symbols-outlined text-tertiary bg-tertiary-fixed/30 p-1.5 rounded-lg">grade</span>
               </div>
               <p className="font-display text-display-lg text-on-surface leading-tight">
@@ -227,7 +229,7 @@ export default function Dashboard() {
               </p>
               <div className="flex items-center gap-1 text-on-surface-variant text-body-sm opacity-80">
                 <span className="material-symbols-outlined text-sm">bar_chart</span>
-                <span>Cumulative Class Mean</span>
+                <span>Rata-rata Kelas Kumulatif</span>
               </div>
             </div>
           </section>
@@ -238,8 +240,8 @@ export default function Dashboard() {
             <div className="lg:col-span-2 bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="font-display text-xl font-bold text-on-surface">Processing Volume</h3>
-                  <p className="text-on-surface-variant text-body-sm">Submission volume analyzed over the last 24 hours</p>
+                  <h3 className="font-display text-xl font-bold text-on-surface">Volume Pemrosesan</h3>
+                  <p className="text-on-surface-variant text-body-sm">Volume berkas yang dianalisis dalam 24 jam terakhir</p>
                 </div>
                 <div className="flex gap-2">
                   <span className="px-2 py-1 bg-surface-variant text-on-surface-variant text-[10px] font-bold rounded">LIVE</span>
@@ -276,8 +278,8 @@ export default function Dashboard() {
             {/* Recent Errors */}
             <div className="bg-surface-container-lowest p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col">
               <div className="mb-4">
-                <h3 className="font-display text-xl font-bold text-on-surface">Recent Errors</h3>
-                <p className="text-on-surface-variant text-body-sm">Vision LLM / Queue Failures</p>
+                <h3 className="font-display text-xl font-bold text-on-surface">Kesalahan Sistem Terbaru</h3>
+                <p className="text-on-surface-variant text-body-sm">Kegagalan Antrean / Vision LLM</p>
               </div>
               <div className="space-y-4 overflow-y-auto max-h-64 flex-1 pr-1">
                 {recentErrors.length === 0 ? (
@@ -304,8 +306,8 @@ export default function Dashboard() {
           <section className="bg-surface-container-lowest rounded-xl border border-border-subtle shadow-sm overflow-hidden mb-8">
             <div className="p-6 border-b border-border-subtle flex justify-between items-center">
               <div>
-                <h3 className="font-display text-xl font-bold text-on-surface">Real-time Queue</h3>
-                <p className="text-on-surface-variant text-body-sm">Active multimodal assessment jobs</p>
+                <h3 className="font-display text-xl font-bold text-on-surface">Antrean Real-time</h3>
+                <p className="text-on-surface-variant text-body-sm">Tugas penilaian dokumen aktif oleh AI</p>
               </div>
               <div className="flex gap-3">
                 <Link
@@ -313,7 +315,7 @@ export default function Dashboard() {
                   className="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low border border-border-subtle rounded-lg text-body-sm hover:bg-surface-container-highest transition-colors font-semibold"
                 >
                   <span className="material-symbols-outlined text-lg">upload</span>
-                  Simulate Submission
+                  Kirim Jawaban Simulasi
                 </Link>
               </div>
             </div>
@@ -330,8 +332,8 @@ export default function Dashboard() {
                       <th className="px-6 py-4">Nama Mahasiswa</th>
                       <th className="px-6 py-4">Email</th>
                       <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Waktu Submit</th>
-                      <th className="px-6 py-4 text-right">Action</th>
+                      <th className="px-6 py-4">Waktu Kirim</th>
+                      <th className="px-6 py-4 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -353,7 +355,7 @@ export default function Dashboard() {
                             className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded text-xs font-bold transition-all hover:bg-primary-container active:scale-95"
                           >
                             <span className="material-symbols-outlined text-[16px]">visibility</span>
-                            Review
+                            Tinjau
                           </Link>
                         </td>
                       </tr>
@@ -364,7 +366,7 @@ export default function Dashboard() {
             </div>
             {submissions.length > 0 && (
               <div className="p-4 bg-surface-muted border-t border-border-subtle flex justify-between items-center text-body-sm text-on-surface-variant">
-                <span>Showing {submissions.length} of {submissions.length} entries</span>
+                <span>Menampilkan {submissions.length} dari {submissions.length} entri</span>
               </div>
             )}
           </section>
@@ -375,7 +377,7 @@ export default function Dashboard() {
       {stats.processing > 0 && (
         <div className="fixed bottom-6 right-6 w-80 bg-surface-container-lowest border border-border-subtle rounded-xl shadow-2xl p-4 transform translate-y-0 opacity-100 transition-all duration-500 z-[60]" id="progress-monitor">
           <div className="flex justify-between items-center mb-3">
-            <h4 className="font-semibold text-body-sm">Current Batch Analysis</h4>
+            <h4 className="font-semibold text-body-sm">Analisis Antrean Batch</h4>
             <button className="text-on-surface-variant hover:text-on-surface" onClick={() => {
               const el = document.getElementById('progress-monitor');
               if (el) el.style.display = 'none';
@@ -384,8 +386,8 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold text-on-surface-variant">Active Worker Tasks</span>
-            <span className="text-[11px] font-bold text-primary">{stats.processing} active</span>
+            <span className="text-[11px] font-bold text-on-surface-variant">Tugas Worker Aktif</span>
+            <span className="text-[11px] font-bold text-primary">{stats.processing} aktif</span>
           </div>
           <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
             <div className="h-full bg-primary animate-pulse" style={{ width: "100%" }}></div>

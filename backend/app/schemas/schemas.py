@@ -129,3 +129,26 @@ class SubmissionDetailResponse(SubmissionResponse):
 
     class Config:
         from_attributes = True
+
+
+# Auth and User Schemas
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user_name: str
+    user_email: str
+    user_role: str
+
+class UserResponse(BaseModel):
+    id: UUID
+    name: str
+    email: EmailStr
+    role: str
+
+    class Config:
+        from_attributes = True
+
