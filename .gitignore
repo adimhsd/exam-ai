@@ -1,0 +1,48 @@
+# Secrets and Credentials
+.env
+.env*.local
+
+# Node / Frontend
+node_modules/
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Python / Backend
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+var/
+pip-log.txt
+pip-delete-this-directory.txt
+.toast
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Databases & Local Data
+*.db
+*.sqlite3
+
+# IDEs & Text Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

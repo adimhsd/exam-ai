@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0037b0;
+  --color-background: #faf8ff;
+  --color-surface: #faf8ff;
+  --color-surface-muted: #F8FAFC;
+  --color-border-subtle: #E2E8F0;
+  
+  --color-status-completed: #10B981;
+  --color-status-processing: #F59E0B;
+  --color-status-queued: #64748B;
+  --color-status-failed: #EF4444;
+
+  --color-ai-confidence-high: #059669;
+  --color-ai-confidence-low: #DC2626;
+
+  --color-surface-dim: #d9d9e5;
+  --color-surface-bright: #faf8ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f2fe;
+  --color-surface-container: #ededf9;
+  --color-surface-container-high: #e8e7f3;
+  --color-surface-container-highest: #e2e1ed;
+  
+  --color-on-surface: #1a1b23;
+  --color-on-surface-variant: #434655;
+  
+  --color-primary-fixed: #dce1ff;
+  --color-primary-fixed-dim: #b7c4ff;
+  --color-on-primary-fixed: #001551;
+  --color-on-primary-fixed-variant: #0039b5;
+
+  --color-tertiary: #7f2500;
+  --color-tertiary-fixed: #ffdbcf;
+  
+  --font-sans: var(--font-inter), sans-serif;
+  --font-display: var(--font-hanken-grotesk), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+  
+  --spacing-sidebar-width: 260px;
+  --spacing-margin-desktop: 32px;
+  --spacing-margin-mobile: 16px;
+  --spacing-gutter: 24px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.sidebar-active {
+  font-weight: 700;
+  border-right: 4px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.grading-card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-border-subtle);
+  padding: 24px;
+  transition: all 0.2s;
+}
+
+.ocr-editor {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  width: 100%;
+  background-color: var(--color-surface-muted);
+  padding: 16px;
+  border: 1px solid var(--color-border-subtle);
+  resize: none;
+  min-height: 120px;
+}

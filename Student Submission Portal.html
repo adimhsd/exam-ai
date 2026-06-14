@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>exam-ai | Student Submission Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "status-failed": "#EF4444",
+                    "background": "#faf8ff",
+                    "ai-confidence-high": "#059669",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#dfe0e0",
+                    "on-background": "#1a1b23",
+                    "on-tertiary-container": "#ffc9b7",
+                    "surface-container-highest": "#e2e1ed",
+                    "surface-tint": "#2151da",
+                    "surface-muted": "#F8FAFC",
+                    "secondary-fixed-dim": "#c6c6c7",
+                    "on-surface": "#1a1b23",
+                    "on-error": "#ffffff",
+                    "primary-container": "#1d4ed8",
+                    "secondary": "#5d5f5f",
+                    "secondary-fixed": "#e2e2e2",
+                    "tertiary-fixed-dim": "#ffb59c",
+                    "status-processing": "#F59E0B",
+                    "inverse-primary": "#b7c4ff",
+                    "ai-confidence-low": "#DC2626",
+                    "primary-fixed-dim": "#b7c4ff",
+                    "on-tertiary-fixed-variant": "#832700",
+                    "error-container": "#ffdad6",
+                    "inverse-surface": "#2e3039",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#c4c5d7",
+                    "on-surface-variant": "#434655",
+                    "on-primary-container": "#cad3ff",
+                    "on-tertiary-fixed": "#390c00",
+                    "on-secondary-container": "#616363",
+                    "on-primary-fixed": "#001551",
+                    "outline": "#747686",
+                    "tertiary": "#7f2500",
+                    "status-queued": "#64748B",
+                    "error": "#ba1a1a",
+                    "surface-variant": "#e2e1ed",
+                    "primary": "#0037b0",
+                    "tertiary-fixed": "#ffdbcf",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d9d9e5",
+                    "border-subtle": "#E2E8F0",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#f0f0fb",
+                    "surface": "#faf8ff",
+                    "surface-bright": "#faf8ff",
+                    "primary-fixed": "#dce1ff",
+                    "status-completed": "#10B981",
+                    "on-secondary-fixed-variant": "#454747",
+                    "tertiary-container": "#a73400",
+                    "surface-container-low": "#f3f2fe",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#1a1c1c",
+                    "surface-container-high": "#e8e7f3",
+                    "surface-container": "#ededf9",
+                    "on-primary-fixed-variant": "#0039b5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-width": "260px",
+                    "margin-mobile": "16px",
+                    "container-max": "1440px",
+                    "review-panel-gap": "2px",
+                    "unit": "4px",
+                    "margin-desktop": "32px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "code-sm": ["JetBrains Mono"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "code-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #faf8ff;
+            color: #1a1b23;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-header {
+            background: rgba(250, 248, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .ambient-shadow {
+            box-shadow: 0 4px 20px -2px rgba(29, 78, 216, 0.08);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md flex flex-col min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="glass-header sticky top-0 z-50 border-b border-border-subtle px-margin-mobile md:px-margin-desktop h-16 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">school</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">exam-ai</h1>
+</div>
+<div class="hidden md:block w-px h-6 bg-border-subtle mx-2"></div>
+<span class="hidden md:inline-block font-label-caps text-label-caps text-on-surface-variant tracking-widest uppercase">Student Portal</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-4 py-2 text-on-surface-variant hover:bg-surface-container transition-all rounded-lg">
+<span class="material-symbols-outlined text-xl">help_outline</span>
+<span class="font-body-sm text-body-sm hidden sm:inline">Guide</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center py-12 px-margin-mobile md:px-margin-desktop">
+<!-- Welcome & Instructions -->
+<div class="max-w-4xl w-full text-center mb-10">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Submission Center</h2>
+<div class="bg-surface-container-low p-6 rounded-xl border border-border-subtle inline-block text-left ambient-shadow">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary-container mt-1">info</span>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-2">
+                            Silakan unggah lembar jawaban PDF Anda melalui formulir di bawah ini.
+                        </p>
+<p class="font-body-sm text-body-sm text-secondary">
+                            Pastikan scan memiliki pencahayaan yang cukup, resolusi tinggi, dan tidak terpotong untuk akurasi penilaian AI yang maksimal.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Container (Iframe Placeholder) -->
+<section class="max-w-4xl w-full bg-white rounded-2xl border border-border-subtle overflow-hidden ambient-shadow flex flex-col h-[850px]">
+<!-- Form Header Mockup -->
+<div class="bg-primary px-8 py-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white">description</span>
+<span class="text-white font-headline-md text-body-md font-semibold">Answer Sheet Submission</span>
+</div>
+<div class="flex gap-2">
+<div class="w-3 h-3 rounded-full bg-white/20"></div>
+<div class="w-3 h-3 rounded-full bg-white/20"></div>
+<div class="w-3 h-3 rounded-full bg-white/20"></div>
+</div>
+</div>
+<!-- The "Iframe" -->
+<div class="flex-grow relative bg-surface-muted overflow-hidden">
+<!-- Visual Placeholder for the Google Form / Typeform -->
+<div class="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+<div class="w-20 h-20 bg-primary-fixed rounded-full flex items-center justify-center mb-6 animate-pulse">
+<span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Google Form Integration</h3>
+<p class="text-on-surface-variant max-w-sm mx-auto mb-8">
+                        The secure submission form is loaded via encrypted connection to ensure institutional data privacy.
+                    </p>
+<!-- Simulated Form Fields for Visual Balance -->
+<div class="w-full max-w-md space-y-4 text-left">
+<div class="space-y-1">
+<div class="h-4 w-24 bg-surface-container-highest rounded"></div>
+<div class="h-12 w-full bg-white border border-border-subtle rounded-lg"></div>
+</div>
+<div class="space-y-1">
+<div class="h-4 w-32 bg-surface-container-highest rounded"></div>
+<div class="h-12 w-full bg-white border border-border-subtle rounded-lg"></div>
+</div>
+<div class="h-32 w-full bg-primary-fixed/30 border-2 border-dashed border-primary/30 rounded-xl flex flex-col items-center justify-center gap-2">
+<span class="material-symbols-outlined text-primary">add_circle</span>
+<span class="font-label-caps text-label-caps text-primary">Drop PDF File Here</span>
+</div>
+<div class="h-12 w-full bg-primary rounded-lg"></div>
+</div>
+<!-- Overlay for "Interactive" look -->
+<div class="absolute inset-0 bg-transparent cursor-pointer group" onclick="alert('Submission form would load here via iframe.')">
+<div class="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity bg-on-background text-white px-4 py-2 rounded-full font-label-caps text-label-caps flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">open_in_new</span> External Form Provider
+                        </div>
+</div>
+</div>
+<!-- Background Decoration -->
+<div class="absolute -bottom-20 -left-20 w-64 h-64 bg-primary-fixed-dim/20 rounded-full blur-3xl"></div>
+<div class="absolute -top-20 -right-20 w-64 h-64 bg-tertiary-fixed-dim/20 rounded-full blur-3xl"></div>
+</div>
+</section>
+<!-- Final Checklist / Tips -->
+<div class="max-w-4xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+<div class="p-5 bg-white border border-border-subtle rounded-xl flex items-center gap-4">
+<span class="material-symbols-outlined text-ai-confidence-high text-3xl">check_circle</span>
+<div>
+<h4 class="font-bold text-body-sm">PDF Format</h4>
+<p class="text-body-sm text-on-surface-variant">Max size 20MB per file</p>
+</div>
+</div>
+<div class="p-5 bg-white border border-border-subtle rounded-xl flex items-center gap-4">
+<span class="material-symbols-outlined text-ai-confidence-high text-3xl">light_mode</span>
+<div>
+<h4 class="font-bold text-body-sm">Clear Contrast</h4>
+<p class="text-body-sm text-on-surface-variant">Avoid dark shadows</p>
+</div>
+</div>
+<div class="p-5 bg-white border border-border-subtle rounded-xl flex items-center gap-4">
+<span class="material-symbols-outlined text-ai-confidence-high text-3xl">speed</span>
+<div>
+<h4 class="font-bold text-body-sm">Fast Verification</h4>
+<p class="text-body-sm text-on-surface-variant">AI processes in &lt;30s</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="mt-auto border-t border-border-subtle bg-surface px-margin-mobile md:px-margin-desktop py-12">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+<div class="space-y-2">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">school</span>
+<span class="font-headline-md text-body-md font-bold text-primary">exam-ai</span>
+</div>
+<p class="text-body-sm text-on-surface-variant max-w-xs">
+                    Next-generation academic assessment powered by multimodal vision AI technology.
+                </p>
+</div>
+<div class="flex flex-col md:flex-row gap-8 md:gap-16">
+<div>
+<h5 class="font-label-caps text-label-caps text-secondary mb-4 uppercase tracking-widest">Academic Support</h5>
+<ul class="space-y-3">
+<li class="flex items-center gap-2 group cursor-pointer">
+<span class="material-symbols-outlined text-primary-container text-lg group-hover:scale-110 transition-transform">mail</span>
+<span class="text-body-sm text-on-surface-variant hover:text-primary transition-colors">support@exam-ai.edu</span>
+</li>
+<li class="flex items-center gap-2 group cursor-pointer">
+<span class="material-symbols-outlined text-primary-container text-lg group-hover:scale-110 transition-transform">call</span>
+<span class="text-body-sm text-on-surface-variant hover:text-primary transition-colors">+62 (21) 500-888</span>
+</li>
+</ul>
+</div>
+<div>
+<h5 class="font-label-caps text-label-caps text-secondary mb-4 uppercase tracking-widest">Office Hours</h5>
+<p class="text-body-sm text-on-surface-variant">Mon - Fri: 08:00 - 17:00 WIB</p>
+<p class="text-body-sm text-on-surface-variant">Sat: 08:00 - 12:00 WIB</p>
+</div>
+</div>
+</div>
+<div class="max-w-container-max mx-auto mt-12 pt-8 border-t border-border-subtle flex flex-col sm:row justify-between gap-4">
+<p class="text-body-sm text-outline">© 2024 exam-ai Academic Institutional. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="text-body-sm text-outline hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-body-sm text-outline hover:text-primary transition-colors" href="#">Service Terms</a>
+</div>
+</div>
+</footer>
+<script>
+        // Simple scroll animation for the instruction box
+        window.addEventListener('DOMContentLoaded', () => {
+            const instructions = document.querySelector('.max-w-4xl');
+            instructions.style.opacity = '0';
+            instructions.style.transform = 'translateY(20px)';
+            instructions.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+            
+            setTimeout(() => {
+                instructions.style.opacity = '1';
+                instructions.style.transform = 'translateY(0)';
+            }, 200);
+        });
+    </script>
+</body></html>
