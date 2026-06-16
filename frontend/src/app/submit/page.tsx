@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -12,6 +13,7 @@ interface Exam {
 }
 
 export default function StudentSubmissionPortal() {
+  const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExamId, setSelectedExamId] = useState("");
   const [nim, setNim] = useState("");
@@ -67,12 +69,8 @@ export default function StudentSubmissionPortal() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setSuccessMessage("Lembar jawaban ujian berhasil diunggah! AI sedang memproses penilaian di antrean.");
-        // Reset form
-        setNim("");
-        setName("");
-        setEmail("");
+        // Redirect to submit-success page
+        router.push("/submit-success");
       } else {
         const err = await res.json();
         alert(`Gagal mengirimkan jawaban: ${err.detail || "Error server"}`);
