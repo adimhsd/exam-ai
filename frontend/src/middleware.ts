@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isLoginPage = pathname === "/login";
-  const isStudentPortal = pathname === "/submit";
+  const isStudentPortal = pathname === "/submit" || pathname === "/submit-success";
   const isRootPage = pathname === "/";
 
   // Ignore static assets, favicon, API routes
